@@ -55,8 +55,6 @@ private class InternalPolarApp(
 
     private val apiService by inject<ApiService>()
 
-    private val maxCapacity = 100
-
     private var mLastLink: LinkDataModel? = null
     private var mLastListener: PolarInitListener? = null
 
@@ -79,7 +77,7 @@ private class InternalPolarApp(
             Configuration.Env = DevEnvConfiguration()
         }
 
-        pendingEvents.ensureCapacity(maxCapacity)
+        pendingEvents.ensureCapacity(pendingEventsCapacity)
 
         startInject()
         startInitializingApp()
@@ -196,7 +194,7 @@ private class InternalPolarApp(
                     userSession.trackEvents(events)
                 }
             } else {
-                if (pendingEvents.size == maxCapacity) {
+                if (pendingEvents.size == pendingEventsCapacity) {
                     pendingEvents.removeAt(0)
                 }
                 pendingEvents.add(UntrackedEvent(name, date, attributes))
@@ -449,6 +447,12 @@ open class PolarApp {
 
         @JvmStatic
         var isLoggingEnabled = false
+
+        @JvmStatic
+        val pendingEventsCapacity = 100
+
+        @JvmStatic
+        val minimumIntervalForSendingUserAttributesInMillis = 1000L
 
         @Volatile
         private var _shared: PolarApp? = null

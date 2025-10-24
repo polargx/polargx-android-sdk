@@ -1,0 +1,194 @@
+[versions]
+# @keep
+compileSdk = "36"
+minSdk = "32"
+targetSdk = "36"
+versionCode = "1"
+versionName = "1.0.0"
+
+googleServices = "4.4.4"
+firebaseCrashlytic = "3.0.6"
+androidGradle = "8.13.0"
+androidLibrary = "8.13.0"
+
+kotlin = "2.2.20"
+core = "1.17.0"
+appCompat = "1.7.1"
+browser = "1.9.0"
+billingClient = "8.0.0"
+revenueCat = "9.1.2"
+kronosJava = "0.0.1-alpha11"
+kronosAndroid = "0.0.1-alpha11"
+lottie = "6.6.10"
+coil = "2.7.0"
+blurry = "4.0.1"
+blurView = "version-2.0.3"
+ccp = "2.7.3"
+androidBrowserHelper = "2.6.2"
+dotsIndicator = "5.1.0"
+branchIO = "5.20.3"
+phoneNumber = "9.0.16"
+exoplayer = "1.8.0"
+media = "1.7.1"
+media3 = "1.8.0"
+mpAndroidChart = "v3.1.0"
+imageCropper = "4.6.0"
+switchButton = "2.1.0"
+indicatorSeekbar = "v2.1.1"
+healthConnect = "1.1.0"
+googlePlayServiceAuth = "21.4.0"
+work = "2.10.5"
+calendarView = "2.9.0"
+playReview = "2.0.2"
+ktor = "3.3.1"
+firebaseBOM = "34.4.0"
+koin = "4.1.1"
+activity = "1.11.0"
+fragment = "1.8.9"
+viewmodel = "2.9.4"
+multidex = "2.0.1"
+camera2 = "1.5.1"
+recyclerView = "1.4.0"
+constrainLayout = "2.2.1"
+remoteViews = "1.1.0"
+material = "1.13.0"
+flexbox = "3.0.0"
+
+junit = "1.3.0"
+junitVersion = "4.13.2"
+espressoCore = "3.7.0"
+composeBOM = "2025.10.00"
+
+superwall = "2.5.7"
+
+window = "1.5.0"
+
+# Internet time
+
+kotlinx-serialization = "1.9.0"
+kotlinx-coroutines = "1.10.2"
+daimajiaSwipelayout = "1.2.0"
+
+
+[libraries]
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core" }
+app-compat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appCompat" }
+daimajia-swipelayout = { group = "com.daimajia.swipelayout", name = "library", version.ref = "daimajiaSwipelayout" }
+
+kronos-java = { group = "com.lyft.kronos", name = "kronos-java", version.ref = "kronosJava" }
+kronos-android = { group = "com.lyft.kronos", name = "kronos-android", version.ref = "kronosAndroid" }
+lottie = { group = "com.airbnb.android", name = "lottie", version.ref = "lottie" }
+coil = { group = "io.coil-kt", name = "coil", version.ref = "coil" }
+coil-svg = { group = "io.coil-kt", name = "coil-svg", version.ref = "coil" }
+coil-gif = { group = "io.coil-kt", name = "coil-gif", version.ref = "coil" }
+coil-video = { group = "io.coil-kt", name = "coil-video", version.ref = "coil" }
+blurry = { group = "jp.wasabeef", name = "blurry", version.ref = "blurry" }
+blur-view = { group = "com.github.Dimezis", name = "BlurView", version.ref = "blurView" }
+ccp = { group = "com.hbb20", name = "ccp", version.ref = "ccp" }
+dots-indicator = { group = "com.tbuonomo", name = "dotsindicator", version.ref = "dotsIndicator" }
+branchio = { group = "io.branch.sdk.android", name = "library", version.ref = "branchIO" }
+lib-phonenumber = { group = "com.googlecode.libphonenumber", name = "libphonenumber", version.ref = "phoneNumber" }
+media = { group = "androidx.media", name = "media", version.ref = "media" }
+media3-session = { group = "androidx.media3", name = "media3-session", version.ref = "media3" }
+
+media3-exoplayer = { group = "androidx.media3", name = "media3-exoplayer", version.ref = "exoplayer" }
+media3-exoplayer-dash = { group = "androidx.media3", name = "media3-exoplayer-dash", version.ref = "exoplayer" }
+media3-exoplayer-ui = { group = "androidx.media3", name = "media3-ui", version.ref = "exoplayer" }
+mpandroidchart = { group = "com.github.PhilJay", name = "MPAndroidChart", version.ref = "mpAndroidChart" }
+image-cropper = { group = "com.vanniktech", name = "android-image-cropper", version.ref = "imageCropper" }
+switch-button = { group = "com.kyleduo.switchbutton", name = "library", version.ref = "switchButton" }
+indicator-seekbar = { group = "com.github.warkiz", name = "IndicatorSeekBar", version.ref = "indicatorSeekbar" }
+calendar-view = { group = "com.kizitonwose.calendar", name = "view", version.ref = "calendarView" }
+play-review = { group = "com.google.android.play", name = "review", version.ref = "playReview" }
+play-reviewktx = { group = "com.google.android.play", name = "review-ktx", version.ref = "playReview" }
+health-connect = { group = "androidx.health.connect", name = "connect-client", version.ref = "healthConnect" }
+google-play-service-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "googlePlayServiceAuth" }
+work = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
+
+ktor-client-core = { group = "io.ktor", name = "ktor-client-core", version.ref = "ktor" }
+ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktor" }
+ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging", version.ref = "ktor" }
+ktor-client-content-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktor" }
+
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBOM" }
+firebase-analytics-ktx = { group = "com.google.firebase", name = "firebase-analytics" }
+firebase-inappmessaging-display-ktx = { group = "com.google.firebase", name = "firebase-inappmessaging-display" }
+firebase-messaging-ktx = { group = "com.google.firebase", name = "firebase-messaging" }
+firebase-crashlytics-ktx = { group = "com.google.firebase", name = "firebase-crashlytics" }
+koin-android = { group = "io.insert-koin", name = "koin-android", version.ref = "koin" }
+koin-androidx-workmanager = { group = "io.insert-koin", name = "koin-androidx-workmanager", version.ref = "koin" }
+activity-ktx = { group = "androidx.activity", name = "activity-ktx", version.ref = "activity" }
+fragment-ktx = { group = "androidx.fragment", name = "fragment-ktx", version.ref = "fragment" }
+lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "viewmodel" }
+multidex = { group = "androidx.multidex", name = "multidex", version.ref = "multidex" }
+camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "camera2" }
+camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "camera2" }
+recycler-view = { group = "androidx.recyclerview", name = "recyclerview", version.ref = "recyclerView" }
+remote-views = { group = "androidx.core", name = "core-remoteviews", version.ref = "remoteViews" }
+flexbox = { group = "com.google.android.flexbox", name = "flexbox", version.ref = "flexbox" }
+superwall = { group = "com.superwall.sdk", name = "superwall-android", version.ref = "superwall" }
+superwall-compose = { group = "com.superwall.sdk", name = "superwall-compose", version.ref = "superwall" }
+android-gif-drawable = { group = "pl.droidsonroids.gif", name = "android-gif-drawable", version = "1.2.29" }
+link-attribution = { group = "com.github.infinitech-dev", name = "LinkAttribution-AndroidSDK", version = "1.1.0" }
+
+androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junit" }
+junit = { group = "junit", name = "junit", version.ref = "junitVersion" }
+androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
+
+
+# Billing
+billing = { module = "com.android.billingclient:billing", version.ref = "billingClient" }
+billing-client = { group = "com.android.billingclient", name = "billing-ktx", version.ref = "billingClient" }
+revenue_cat = { module = "com.revenuecat.purchases:purchases", version.ref = "revenueCat" }
+
+# Browser
+browser = { module = "androidx.browser:browser", version.ref = "browser" }
+android-browser-helper = { group = "com.google.androidbrowserhelper", name = "androidbrowserhelper", version.ref = "androidBrowserHelper" }
+
+# Compose
+#compose_bom = { module = "androidx.compose:compose-bom", version = "2024.11.00" }
+activity_compose = { module = "androidx.activity:activity-compose", version = "1.11.0" }
+ui = { module = "androidx.compose.ui:ui" }
+ui_graphics = { module = "androidx.compose.ui:ui-graphics" }
+
+# Core
+material = { module = "com.google.android.material:material", version.ref = "material" }
+constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "constrainLayout" }
+
+compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBOM" }
+compose-material3 = { group = "androidx.compose.material3", name = "material3" }
+compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
+compose-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "viewmodel" }
+lifecycle-process = { module = "androidx.lifecycle:lifecycle-process", version.ref = "viewmodel" }
+
+# Polargx
+androidx-window = { group = "androidx.window", name = "window", version.ref = "window" }
+
+# Views
+
+# Ktor
+ktor-client-auth = { group = "io.ktor", name = "ktor-client-auth", version.ref = "ktor" }
+
+# Required for Ktor
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
+
+
+# Koin
+koin-androidx-navigation = { group = "io.insert-koin", name = "koin-androidx-navigation", version.ref = "koin" }
+koin-ktor = { group = "io.insert-koin", name = "koin-ktor", version.ref = "koin" }
+koin-logger-slf4j = { group = "io.insert-koin", name = "koin-logger-slf4j", version.ref = "koin" }
+
+# Internet Time
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "androidGradle" }
+android-library = { id = "com.android.library", version.ref = "androidLibrary" }
+jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+org-jetbrains-kotlin-plugin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+firebase-crashlytics-gradle = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlytic" }

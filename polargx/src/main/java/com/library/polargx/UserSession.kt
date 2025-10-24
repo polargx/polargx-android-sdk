@@ -29,15 +29,18 @@ data class UserSession(
     val trackingFileStorage: File
 ) : KoinComponent {
 
+    private val apiService by inject<ApiService>()
+
     private var isValid = true
 
     private var attributes = mapOf<String, Any?>()
+    private var attributesVersion: Int = 0
+    private var attributesIsSending = false
+
     private var pendingRegisterPushToken: String? = null
     private var lastRegisteredFCMToken: String? = null
 
     private val trackingEventQueue by lazy { TrackingEventQueue(trackingFileStorage) }
-
-    private val apiService by inject<ApiService>()
 
     companion object {
         const val TAG = ">>>Polar"
@@ -48,8 +51,10 @@ data class UserSession(
      */
     suspend fun setAttributes(attrs: Map<String, Any?>) {
         if (!isValid) return
+        val immediateSend = attributesVersion == 0
         attributes += attrs
-        startToUpdateUser()
+        attributesVersion += 1
+        startToUpdateUser(immediate = immediateSend)
     }
 
     suspend fun setPushToken(fcm: String?) {
@@ -74,28 +79,59 @@ data class UserSession(
      * Stop sending retrying process if server returns status code #403.
      * Retry when network connection issue, server returns status code #400.
      */
-    private suspend fun startToUpdateUser() {
+    private suspend fun startToUpdateUser(immediate: Boolean) {
+        if (attributesIsSending) return
+        attributesIsSending = true
+        var immediate = immediate
+        var retry = false
         var submitError: Exception? = null
 
         do {
             try {
-                val user = UpdateUserModel(organizationUnid, userID, attributes)
-                val request = UpdateUserRequest.from(user)
-                apiService.updateUser(request)
-            } catch (e: Exception) {
-                if (e is ApiError && e.code == 403) {
-                    Logger.d(TAG, "UpdateUser: ⛔⛔⛔ INVALID appId OR apiKey! ⛔⛔⛔")
-                    submitError = null
-                } else {
-                    Logger.d(TAG, "UpdateUser: failed ⛔️ + retrying 🔁: $e")
+                //Delay for collecting enough information - prevent multiple api calls
+                //Use the newest attributes at time the API calls.
+                //After successful, compare sent attributes version with the newest attributes version to decide run the sending again.
+
+                if (submitError != null) {
                     delay(1000)
-                    submitError = e
+                } else if (!immediate) {
+                    delay(PolarApp.minimumIntervalForSendingUserAttributesInMillis)
+                }
+                val attributesVersion = this.attributesVersion
+                val attributes = this.attributes
+                val user = UpdateUserModel(
+                    organizationUnid,
+                    userID,
+                    attributes
+                )
+                apiService.updateUser(request = UpdateUserRequest.from(user))
+                submitError = null
+                if (attributesVersion != this.attributesVersion) {
+                    immediate = false
+                    retry = true
+                }
+            } catch (ex: Exception) {
+                if (ex is ApiError && ex.code == 403) {
+                    Logger.d(TAG, "UpdateUser: ⛔⛔⛔ INVALID appId OR apiKey! ⛔⛔⛔")
+                    submitError = ex
+                    retry = false
+                } else {
+                    Logger.d(TAG, "UpdateUser: failed ⛔️ + retrying 🔁: $ex")
+//                    delay(1000)
+//                    submitError = ex
+                    submitError = ex
+                    retry = true
                 }
             }
-        } while (submitError != null)
+        } while (retry)
 
-        trackingEventQueue.setReady()
-        trackingEventQueue.sendEventsIfNeeded()
+        if (submitError == null) {
+            trackingEventQueue.setReady()
+            trackingEventQueue.sendEventsIfNeeded()
+        }
+
+        //Mark startToUpdateUser is not running
+        attributesIsSending = false
     }
 
     /**
