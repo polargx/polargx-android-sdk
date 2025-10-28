@@ -70,7 +70,7 @@ dependencies {
     implementation(libs.androidx.window)
     implementation(libs.lifecycle.process)
 
-    // Ktor
+    // Ktor - Keep as implementation since internal to library
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.android)
     implementation(libs.ktor.client.content.negotiation)
@@ -78,9 +78,9 @@ dependencies {
     implementation(libs.ktor.client.logging)
     implementation(libs.ktor.client.auth)
 
-    // Koin
-    implementation(libs.koin.android)
-    implementation(libs.koin.androidx.navigation)
+    // Koin - Use api because classes extend KoinComponent
+    api(libs.koin.android)
+    api(libs.koin.androidx.navigation)
     implementation(libs.koin.ktor)
     implementation(libs.koin.logger.slf4j)
 
@@ -88,9 +88,9 @@ dependencies {
     implementation(libs.kronos.java)
     implementation(libs.kronos.android)
 
-    // Required for Ktor
-    implementation(libs.kotlinx.serialization.json)
-    implementation(libs.kotlinx.coroutines.android)
+    // Required for Ktor and serialization - Use api for serialization
+    api(libs.kotlinx.serialization.json)
+    api(libs.kotlinx.coroutines.android)
 }
 
 
@@ -100,7 +100,7 @@ afterEvaluate {
             register<MavenPublication>("release") {
                 groupId = "com.github.polargx" // Replace with your GitHub username
                 artifactId = "polargx-android-sdk" // Replace with your library's name (e.g., my-awesome-library)
-                version = "3.0.5" // Initial version number (important!)
+                version = "3.0.6" // Initial version number (important!)
 
                 afterEvaluate {
                     from(components["release"])
