@@ -72,6 +72,7 @@ daimajiaSwipelayout = "1.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core" }
+installreferrer = { group = "com.android.installreferrer", name = "installreferrer", version = "2.2" }
 app-compat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appCompat" }
 daimajia-swipelayout = { group = "com.daimajia.swipelayout", name = "library", version.ref = "daimajiaSwipelayout" }
 

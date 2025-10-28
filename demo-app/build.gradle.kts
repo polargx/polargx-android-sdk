@@ -42,6 +42,7 @@ android {
 
 dependencies {
 
+    implementation(libs.installreferrer)
     implementation(libs.androidx.core.ktx)
     implementation(libs.app.compat)
     implementation(libs.material)
