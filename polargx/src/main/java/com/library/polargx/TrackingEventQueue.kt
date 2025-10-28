@@ -1,11 +1,12 @@
 package com.library.polargx
 
-import android.util.Log
 import com.library.polargx.api.ApiService
 import com.library.polargx.helpers.ApiError
 import com.library.polargx.helpers.Logger
 import com.library.polargx.models.TrackEventModel
 import com.library.polargx.api.track_event.TrackEventRequest
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.koin.core.component.KoinComponent
@@ -51,7 +52,7 @@ class TrackingEventQueue(val file: File) : KoinComponent {
      * If isReady sets to True, Events will be saved to disk, The queue is ready to send data to backend.
      * If isReady sets to False, Events is not saved to the disk.
      */
-    fun setReady() {
+    suspend fun setReady() = withContext(Dispatchers.IO) {
         val wasReady = isReady
         isReady = true
 
@@ -63,7 +64,7 @@ class TrackingEventQueue(val file: File) : KoinComponent {
     /**
      * Event still pushed to the queue if queue is not ready.
      */
-    fun push(event: TrackEventModel) {
+    suspend fun push(event: TrackEventModel) = withContext(Dispatchers.IO) {
         events.add(event)
         save()
     }
@@ -72,15 +73,15 @@ class TrackingEventQueue(val file: File) : KoinComponent {
         return events.firstOrNull()
     }
 
-    private fun pop() {
+    private suspend fun pop() = withContext(Dispatchers.IO) {
         if (events.isNotEmpty()) {
             events.removeAt(0)
             save()
         }
     }
 
-    private fun save() {
-        if (!isReady) return
+    private suspend fun save() = withContext(Dispatchers.IO) {
+        if (!isReady) return@withContext
 
         try {
             val data = Json.encodeToString(events)
@@ -93,8 +94,8 @@ class TrackingEventQueue(val file: File) : KoinComponent {
     /**
      * Sending Event progress, Only one progress need to be ran at the time.
      */
-    suspend fun sendEventsIfNeeded() {
-        if (!isReady || isRunning) return
+    suspend fun sendEventsIfNeeded() = withContext(Dispatchers.IO) {
+        if (!isReady || isRunning) return@withContext
 
         isRunning = true
 

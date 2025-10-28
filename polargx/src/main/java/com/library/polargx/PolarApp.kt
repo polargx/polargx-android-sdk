@@ -27,6 +27,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.koin.androidContext
@@ -100,12 +101,14 @@ private class InternalPolarApp(
     }
 
     fun startInitializingApp() {
-        startTrackingAppLifeCycle()
+        CoroutineScope(Dispatchers.Main).launch {
+            startTrackingAppLifeCycle()
 
-        val pendingEventFiles = FileStorage
-            .listFiles(appDirectory)
-            .filter { it.startsWith("events_") }
-        startResolvingPendingEvents(pendingEventFiles)
+            val pendingEventFiles = FileStorage
+                .listFiles(appDirectory)
+                .filter { it.startsWith("events_") }
+            startResolvingPendingEvents(pendingEventFiles)
+        }
     }
 
     override fun bind(uri: Uri?, listener: PolarInitListener?) {
@@ -160,13 +163,10 @@ private class InternalPolarApp(
                     trackingFileStorage = file
                 )
             }
-
-            withContext(Dispatchers.IO) {
-                listOf(
-                    async { currentUserSession?.trackEvents(events) },
-                    async { currentUserSession?.setAttributes(attributes ?: emptyMap()) }
-                )
-            }
+            awaitAll(
+                async { currentUserSession?.trackEvents(events) },
+                async { currentUserSession?.setAttributes(attributes ?: emptyMap()) }
+            )
         }
     }
 
@@ -189,10 +189,8 @@ private class InternalPolarApp(
             )
             val userSession = currentUserSession
             if (userSession != null) {
-                withContext(Dispatchers.IO) {
-                    val events = listOf(UntrackedEvent(name, date, attributes))
-                    userSession.trackEvents(events)
-                }
+                val events = listOf(UntrackedEvent(name, date, attributes))
+                userSession.trackEvents(events)
             } else {
                 if (pendingEvents.size == pendingEventsCapacity) {
                     pendingEvents.removeAt(0)
@@ -203,17 +201,17 @@ private class InternalPolarApp(
     }
 
     override fun matchLinkClick(url: String?) {
-        if (url.isNullOrEmpty()) return
-        val params = url.split("&").associate {
-            val parts = it.split("=")
-            parts[0] to parts.getOrElse(1) { "" }
-        }
-        val utmSource = params["__utm_source"]
-        val subdomain = params["__subdomain"]
-        val slug = params["__slug"]
-        val clid = params["__clid"]
-        if (utmSource != "polar") return
         CoroutineScope(Dispatchers.IO).launch {
+            if (url.isNullOrEmpty()) return@launch
+            val params = url.split("&").associate {
+                val parts = it.split("=")
+                parts[0] to parts.getOrElse(1) { "" }
+            }
+            val utmSource = params["__utm_source"]
+            val subdomain = params["__subdomain"]
+            val slug = params["__slug"]
+            val clid = params["__clid"]
+            if (utmSource != "polar") return@launch
             handleOpeningURL(subdomain = subdomain, slug = slug, clid = clid)
         }
     }
@@ -261,28 +259,32 @@ private class InternalPolarApp(
         })
     }
 
-    private fun startResolvingPendingEvents(pendingEventFiles: List<String>) {
-        CoroutineScope(Dispatchers.IO).launch {
-            pendingEventFiles.forEach { pendingEventFile ->
-                val file = appDirectory.file(pendingEventFile)
-                val eventQueue = TrackingEventQueue(file)
+    private suspend fun startResolvingPendingEvents(
+        pendingEventFiles: List<String>
+    ) = withContext(Dispatchers.IO) {
+        pendingEventFiles.forEach { pendingEventFile ->
+            val file = appDirectory.file(pendingEventFile)
+            val eventQueue = TrackingEventQueue(file)
 
-                if (eventQueue.events.isEmpty()) {
-                    FileStorage.remove(pendingEventFile, appDirectory)
-                    return@forEach
-                }
+            if (eventQueue.events.isEmpty()) {
+                FileStorage.remove(pendingEventFile, appDirectory)
+                return@forEach
+            }
 
-                eventQueue.setReady()
-                eventQueue.sendEventsIfNeeded()
+            eventQueue.setReady()
+            eventQueue.sendEventsIfNeeded()
 
-                if (eventQueue.events.isEmpty()) {
-                    FileStorage.remove(pendingEventFile, appDirectory)
-                }
+            if (eventQueue.events.isEmpty()) {
+                FileStorage.remove(pendingEventFile, appDirectory)
             }
         }
     }
 
-    private suspend fun handleOpeningURL(subdomain: String?, slug: String?, clid: String?) {
+    private suspend fun handleOpeningURL(
+        subdomain: String?,
+        slug: String?,
+        clid: String?
+    ) {
         if (subdomain.isNullOrEmpty() && slug.isNullOrEmpty()) {
             mLastListener?.onInitFinished(null, null)
             return

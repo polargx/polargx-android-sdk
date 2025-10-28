@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
@@ -49,29 +50,27 @@ data class UserSession(
     /**
      * Keep all user attributes for next sending. I don't make sure server supports to merging existing user attributes and the new attributes.
      */
-    suspend fun setAttributes(attrs: Map<String, Any?>) {
-        if (!isValid) return
+    suspend fun setAttributes(attrs: Map<String, Any?>) = withContext(Dispatchers.IO) {
+        if (!isValid) return@withContext
         val immediateSend = attributesVersion == 0
         attributes += attrs
         attributesVersion += 1
         startToUpdateUser(immediate = immediateSend)
     }
 
-    suspend fun setPushToken(fcm: String?) {
-        if (!isValid) return
+    suspend fun setPushToken(fcm: String?) = withContext(Dispatchers.IO) {
+        if (!isValid) return@withContext
         pendingRegisterPushToken = fcm
         startToRegisterPushToken()
     }
 
-    fun invalidate() {
-        if (!isValid) return
+    suspend fun invalidate() = withContext(Dispatchers.IO) {
+        if (!isValid) return@withContext
         isValid = false
 
         Logger.d(">>>Polar", "Invalidate user session: $userID")
 
-        CoroutineScope(Dispatchers.IO).launch {
-            startToDeregisterPushToken()
-        }
+        startToDeregisterPushToken()
     }
 
     /**
@@ -79,8 +78,10 @@ data class UserSession(
      * Stop sending retrying process if server returns status code #403.
      * Retry when network connection issue, server returns status code #400.
      */
-    private suspend fun startToUpdateUser(immediate: Boolean) {
-        if (attributesIsSending) return
+    private suspend fun startToUpdateUser(
+        immediate: Boolean
+    ) = withContext(Dispatchers.IO) {
+        if (attributesIsSending) return@withContext
         attributesIsSending = true
         var immediate = immediate
         var retry = false
@@ -97,16 +98,16 @@ data class UserSession(
                 } else if (!immediate) {
                     delay(PolarApp.minimumIntervalForSendingUserAttributesInMillis)
                 }
-                val attributesVersion = this.attributesVersion
-                val attributes = this.attributes
+                val tempAttributesVersion = attributesVersion
+                val tempAttributes = attributes
                 val user = UpdateUserModel(
                     organizationUnid,
                     userID,
-                    attributes
+                    tempAttributes
                 )
                 apiService.updateUser(request = UpdateUserRequest.from(user))
                 submitError = null
-                if (attributesVersion != this.attributesVersion) {
+                if (tempAttributesVersion != attributesVersion) {
                     immediate = false
                     retry = true
                 }
@@ -117,8 +118,6 @@ data class UserSession(
                     retry = false
                 } else {
                     Logger.d(TAG, "UpdateUser: failed ⛔️ + retrying 🔁: $ex")
-//                    delay(1000)
-//                    submitError = ex
                     submitError = ex
                     retry = true
                 }
@@ -138,7 +137,8 @@ data class UserSession(
      * Stop sending retrying process if server returns status code #403
      * Retry when network connection issue, server returns status code #400
      */
-    private suspend fun startToRegisterPushToken() {
+    private suspend fun startToRegisterPushToken(
+    ) = withContext(Dispatchers.IO) {
         var submitError: Exception? = null
 
         do {
@@ -174,7 +174,8 @@ data class UserSession(
         }
     }
 
-    private suspend fun startToDeregisterPushToken() {
+    private suspend fun startToDeregisterPushToken(
+    ) = withContext(Dispatchers.IO) {
         var submitError: Exception? = null
 
         do {
@@ -201,7 +202,9 @@ data class UserSession(
     /**
      * Track event for user.
      */
-    suspend fun trackEvents(events: List<UntrackedEvent>) {
+    suspend fun trackEvents(
+        events: List<UntrackedEvent>
+    ) = withContext(Dispatchers.IO) {
         events.map { event ->
             val (name, date, attributes) = event
             trackingEventQueue.push(

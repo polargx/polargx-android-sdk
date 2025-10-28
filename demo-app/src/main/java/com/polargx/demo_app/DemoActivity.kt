@@ -1,15 +1,23 @@
 package com.polargx.demo_app
 
+import android.app.ComponentCaller
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.library.polargx.Constants.PolarEventKey
+import com.android.installreferrer.api.InstallReferrerClient
+import com.android.installreferrer.api.InstallReferrerStateListener
 import com.library.polargx.PolarApp
+import com.library.polargx.listener.PolarInitListener
 
 class DemoActivity : AppCompatActivity() {
+    companion object {
+        const val TAG = ">>>DemoActivity"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -20,21 +28,13 @@ class DemoActivity : AppCompatActivity() {
             insets
         }
 
-        PolarApp.isLoggingEnabled = true
-        PolarApp.initialize(
-            application = application,
-            appId = "0105f9f4-95f3-4d2d-8a58-134d4c9fec66",
-            apiKey = "dev_0fSHR94kXZ4XZCitPR5B26vlwLUekwpk8w4sHSUF",
-            onLinkClickHandler = { link, data, error ->
-                Log.d("Polar", "\n[DEMO] detect clicked: $link, data: $data, error: $error\n")
-            }
-        )
 
         PolarApp.shared.updateUser(
-            userID = "e1a3cb25-839e-4deb-95b0-2fb8ebd79401",
+            userID = "ccafd507-88a7-4eb0-b9fe-100d2460dede",
             attributes = mapOf(
-                PolarEventKey.Name to "a",
-                PolarEventKey.Email to "a@gmail.com"
+                "email" to "hoangnam9194+1@gmail.com",
+                "username" to "Hoangnam+1",
+                "fullName" to "hoangnam9194",
             )
         )
 
@@ -65,5 +65,73 @@ class DemoActivity : AppCompatActivity() {
 //                )
 //            )
 //        )
+    }
+
+    private val mPolarInitListener = object : PolarInitListener {
+        override fun onInitFinished(
+            attributes: Map<String, Any?>?,
+            error: Throwable?
+        ) {
+            Log.d(TAG, "onInitFinished: attributes=$attributes, error=$error")
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val uri = intent?.data
+        PolarApp.shared.bind(
+            uri = uri,
+            listener = mPolarInitListener
+        )
+        if (uri == null) {
+            fetchInstallReferrer { url ->
+                PolarApp.shared.matchLinkClick(url)
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent, caller: ComponentCaller) {
+        super.onNewIntent(intent, caller)
+        val uri = intent.data
+        PolarApp.shared.reBind(
+            uri = uri,
+            listener = mPolarInitListener
+        )
+        if (uri == null) {
+            fetchInstallReferrer { url ->
+                PolarApp.shared.matchLinkClick(url)
+            }
+        }
+    }
+
+    private fun fetchInstallReferrer(onResult: (String?) -> Unit) {
+        val referrerClient = InstallReferrerClient.newBuilder(this).build()
+
+        referrerClient.startConnection(object : InstallReferrerStateListener {
+            override fun onInstallReferrerSetupFinished(responseCode: Int) {
+                when (responseCode) {
+                    InstallReferrerClient.InstallReferrerResponse.OK -> {
+                        try {
+                            val response = referrerClient.installReferrer
+                            val referrerUrl = response.installReferrer
+                            onResult(referrerUrl)
+                        } catch (e: Exception) {
+                            onResult(null)
+                        } finally {
+                            referrerClient.endConnection()
+                        }
+                    }
+
+                    else -> {
+                        onResult(null)
+                        referrerClient.endConnection()
+                    }
+                }
+            }
+
+            override fun onInstallReferrerServiceDisconnected() {
+
+            }
+        })
     }
 }
