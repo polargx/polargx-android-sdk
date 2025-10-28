@@ -110,6 +110,8 @@ data class UserSession(
                 if (tempAttributesVersion != attributesVersion) {
                     immediate = false
                     retry = true
+                } else {
+                    retry = false
                 }
             } catch (ex: Exception) {
                 if (ex is ApiError && ex.code == 403) {
