@@ -3,18 +3,12 @@ package com.library.polargx.api
 import android.content.Context
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
-import com.library.polargx.Constants
-import com.library.polargx.api.device_tokens.deregister.DeregisterDeviceTokenRequest
-import com.library.polargx.api.device_tokens.register.RegisterDeviceTokenRequest
-import com.library.polargx.api.fcm_tokens.deregister.DeregisterFCMRequest
-import com.library.polargx.api.fcm_tokens.register.RegisterFCMRequest
-import com.library.polargx.api.link_click.LinkClickResponse
-import com.library.polargx.api.link_data.LinkDataResponse
-import com.library.polargx.api.track_event.TrackEventRequest
-import com.library.polargx.api.track_link.TrackLinkClickRequest
-import com.library.polargx.api.track_link.TrackLinkClickResponse
-import com.library.polargx.api.update_link.UpdateLinkClickRequest
-import com.library.polargx.api.update_user.UpdateUserRequest
+import com.library.polargx.PolarConstants
+import com.library.polargx.data.links.remote.link_click.LinkClickResponse
+import com.library.polargx.data.links.remote.link_data.LinkDataResponse
+import com.library.polargx.data.links.remote.track_link.TrackLinkClickRequest
+import com.library.polargx.data.links.remote.track_link.TrackLinkClickResponse
+import com.library.polargx.data.links.local.update_link.UpdateLinkClickRequest
 import com.library.polargx.helpers.ApiError
 import com.library.polargx.models.LinkClickModel
 import com.library.polargx.models.LinkDataModel
@@ -35,72 +29,6 @@ class ApiServiceImpl(
     private val sf: SharedPreferences
 ) : ApiService {
 
-    override suspend fun updateUser(request: UpdateUserRequest?) {
-        val response = client.post {
-            url.path("api/v1/users/profile")
-            setBody(request)
-        }
-        if (response.status.isSuccess()) {
-            return response.body()
-        }
-        throw ApiError(response.bodyAsText())
-    }
-
-    override suspend fun trackEvent(request: TrackEventRequest?) {
-        val response = client.post {
-            url.path("api/v1/events")
-            setBody(request)
-        }
-        if (response.status.isSuccess()) {
-            return response.body()
-        }
-        throw ApiError(response.bodyAsText())
-    }
-
-    override suspend fun registerFCM(request: RegisterFCMRequest?) {
-        val response = client.post {
-            url.path("api/v1/users/fcm-tokens/register")
-            setBody(request)
-        }
-        if (response.status.isSuccess()) {
-            return response.body()
-        }
-        throw ApiError(response.bodyAsText())
-    }
-
-    override suspend fun deregisterFCM(request: DeregisterFCMRequest?) {
-        val response = client.post {
-            url.path("api/v1/users/fcm-tokens/deregister")
-            setBody(request)
-        }
-        if (response.status.isSuccess()) {
-            return response.body()
-        }
-        throw ApiError(response.bodyAsText())
-    }
-
-    override suspend fun registerDeviceToken(request: RegisterDeviceTokenRequest?) {
-        val response = client.post {
-            url.path("api/v1/users/device-tokens/register")
-            setBody(request)
-        }
-        if (response.status.isSuccess()) {
-            return response.body()
-        }
-        throw ApiError(response.bodyAsText())
-    }
-
-    override suspend fun deregisterDeviceToken(request: DeregisterDeviceTokenRequest?) {
-        val response = client.post {
-            url.path("api/v1/users/device-tokens/deregister")
-            setBody(request)
-        }
-        if (response.status.isSuccess()) {
-            return response.body()
-        }
-        throw ApiError(response.bodyAsText())
-    }
-
     override suspend fun getLinkData(domain: String?, slug: String?): LinkDataModel? {
         val response = client.get {
             url.path("api/v1/links/resolve")
@@ -111,7 +39,7 @@ class ApiServiceImpl(
             val body = response.body<LinkDataResponse>()
             return body.data?.sdkLinkData
         }
-        throw ApiError(response.bodyAsText())
+        throw ApiError.ServerError.fromJson(response.bodyAsText())
     }
 
     override suspend fun trackLinkClick(request: TrackLinkClickRequest?): LinkClickModel? {
@@ -123,7 +51,7 @@ class ApiServiceImpl(
             val body = response.body<TrackLinkClickResponse?>()
             return body?.data?.linkClick
         }
-        throw ApiError(response.bodyAsText())
+        throw ApiError.ServerError.fromJson(response.bodyAsText())
     }
 
     override suspend fun updateLinkClick(clickUnid: String?, request: UpdateLinkClickRequest?) {
@@ -134,7 +62,7 @@ class ApiServiceImpl(
         if (response.status.isSuccess()) {
             return response.body()
         }
-        throw ApiError(response.bodyAsText())
+        throw ApiError.ServerError.fromJson(response.bodyAsText())
     }
 
     override suspend fun matchLinkClick(fingerprint: String?): LinkClickModel? {
@@ -146,12 +74,12 @@ class ApiServiceImpl(
             val body = response.body<LinkClickResponse?>()
             return body?.data?.linkClick
         }
-        throw ApiError(response.bodyAsText())
+        throw ApiError.ServerError.fromJson(response.bodyAsText())
     }
 
     override suspend fun isFirstTimeLaunch(context: Context?, nowInMillis: Long): Boolean {
         if (context == null) return false
-        val firstTime = sf.getBoolean(Constants.Local.Prefers.FIRST_TIME_KEY, true)
+        val firstTime = sf.getBoolean(PolarConstants.Local.Prefers.FIRST_TIME_KEY, true)
         if (!firstTime) return false // Already marked as not first time
 
         try {
@@ -159,9 +87,9 @@ class ApiServiceImpl(
             val installTimeMillis = packageInfo.firstInstallTime
 
             // Check if install time is stored. If not, store it.
-            val storedInstallTime = sf.getLong(Constants.Local.Prefers.INSTALL_TIME_KEY, 0L)
+            val storedInstallTime = sf.getLong(PolarConstants.Local.Prefers.INSTALL_TIME_KEY, 0L)
             if (storedInstallTime == 0L) {
-                sf.edit().putLong(Constants.Local.Prefers.INSTALL_TIME_KEY, installTimeMillis)
+                sf.edit().putLong(PolarConstants.Local.Prefers.INSTALL_TIME_KEY, installTimeMillis)
                     .apply()
             }
 
@@ -170,12 +98,12 @@ class ApiServiceImpl(
 
             // If it's a very recent install (adjust threshold), it's the first launch.
             if (timeDifferenceSeconds < 60) { // Adjust threshold as needed
-                sf.edit().putBoolean(Constants.Local.Prefers.FIRST_TIME_KEY, false)
+                sf.edit().putBoolean(PolarConstants.Local.Prefers.FIRST_TIME_KEY, false)
                     .apply() // Mark as not first time
                 return true
             } else {
                 //If the time difference is greater than the threshold, and the app was reinstalled, it is not the first time
-                sf.edit().putBoolean(Constants.Local.Prefers.FIRST_TIME_KEY, false).apply()
+                sf.edit().putBoolean(PolarConstants.Local.Prefers.FIRST_TIME_KEY, false).apply()
                 return false
             }
 

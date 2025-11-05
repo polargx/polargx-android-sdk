@@ -47,10 +47,10 @@
 -keepclassmembers class * extends java.io.File { *; }
 
 # Keep TrackingEventQueue specifically
--keep class com.library.polargx.TrackingEventQueue { *; }
--keepclassmembers class com.library.polargx.TrackingEventQueue { *; }
+-keep class com.library.polargx.session.TrackingEventQueue { *; }
+-keepclassmembers class com.library.polargx.session.TrackingEventQueue { *; }
 
 # Keep UserSession
--keep class com.library.polargx.UserSession { *; }
--keepclassmembers class com.library.polargx.UserSession { *; }
+-keep class com.library.polargx.session.UserSession { *; }
+-keepclassmembers class com.library.polargx.session.UserSession { *; }
 

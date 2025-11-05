@@ -17,8 +17,8 @@ class DemoApplication : Application() {
         PolarApp.isLoggingEnabled = true
         PolarApp.initialize(
             application = this,
-            appId = "2c0681aa-56a4-4d77-a518-6ef29af43f6c",
-            apiKey = "dev_q7Pix0PNqPQQS0A6PkL17gUU1AizX3d3wmvaOD7b",
+            appId = "25a9fed0-6936-47d3-8ac1-2a3a716fbbff",
+            apiKey = "dev_FGmgxH9saC9lwTUIxPqvh6cRShudkDnl8uqPbbGf",
             onLinkClickHandler = { link, data, error ->
                 Log.d("Polar", "\n[DEMO] detect clicked: $link, data: $data, error: $error\n")
             }
