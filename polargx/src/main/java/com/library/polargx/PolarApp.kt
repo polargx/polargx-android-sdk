@@ -111,8 +111,8 @@ private class InternalPolarApp(
     }
 
     private fun getPackageName(): String? {
-//        return application.packageName
-        return "com.vintagewalk.longevity.staging"
+        return application.packageName
+//        return "com.vintagewalk.longevity.staging"
     }
 
     fun startInitializingApp() {
