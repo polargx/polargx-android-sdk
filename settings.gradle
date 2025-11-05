@@ -21,6 +21,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "polargx-android-sdk"
-include(":b2c-app")
 include ':polargx'
 include ':demo-app'
