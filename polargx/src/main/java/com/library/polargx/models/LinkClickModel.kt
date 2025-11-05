@@ -2,9 +2,11 @@ package com.library.polargx.models
 
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
+import kotlinx.serialization.InternalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+@OptIn(InternalSerializationApi::class)
 @Parcelize
 @Serializable
 class LinkClickModel(

@@ -8,7 +8,7 @@ import java.io.File
 data class FileStorage(val file: File) {
 
     companion object {
-        const val TAG = ">>>Polar"
+        const val TAG = ">>>PolarFileStorage"
 
         fun listFiles(directory: FileStorage): List<String> {
             return try {

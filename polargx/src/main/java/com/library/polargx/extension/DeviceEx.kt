@@ -20,6 +20,11 @@ fun Context?.getManufacturer(): String {
     return Build.MANUFACTURER
 }
 
+
+fun Context.getAppVersion(): String? {
+    return packageManager?.getPackageInfo(packageName, 0)?.versionName
+}
+
 fun Context?.getDeviceName(): String {
     return Settings.Secure.getString(
         this?.contentResolver,
