@@ -1,104 +1,207 @@
-## PolarGX Android SDK Installation Guide
-### 1. Create and setup Polar app
-- Register PolarGX account at https://app.polargx.com, after signup `unnamed app` has been created automatically.
-- Setting your app in _App Settings > App Information_.
-- Create an API Key in _App Settings > API Keys_ with _Mobile apps / frontend_ purpose.
-- Configure your domain in _Link Attribution > Configuration > Link domain section_ with:
-  + Default Link Domain
-  + Alternative Link Domain
-- Configure your Android Redirects in _Link Attribution > Configuration > Required Redirects section > Android Redirects_ with:
-  + Google Play Search or Custom URL: Help your link redirects to Google Play or your custom url if your app hasn't been installed.
-  + App Links: Help your link opens app immediately if your app was installed.
-    - Open Android Studio.
-    - Run the following command in the Terminal. The output will display the SHA256 fingerprint for both debug and release builds.
+# PolarGX Android SDK --- Installation & Setup Guide
 
-      For Mac:
-      ```
-      ./gradlew signingReport
-      
-      ```
-      For Windows:
-      ```
-      gradlew signingReport
-      
-      ```
-    - Use _SHA-256 fingerprint_ for _SHA256 Cert Fingerprints_.
-  + Scheme URI: Help your link opens app if your app was installed and can't be opened by _App Links_.
-    Ex: `yourapp_schemeurl://`
-  
-### 2. Adding PolarGX SDK
-- Open `build.gradle` (Module: app) and add the following line inside dependencies:
+This guide walks you through installing and configuring the PolarGX SDK
+for Android, including project setup, deep links, push notifications,
+and initialization in your application.
 
-  ```
-  dependencies {
-      implementation "com.github.infinitech-dev:LinkAttribution-AndroidSDK:x.y.z"
-  }
-  ```
-  Replace x.y.z with the latest version.
-- Open `settings.gradle` (Project Settings) and add the following line inside repositories:
-  ```
-  repositories {
-        maven { url = uri("https://jitpack.io") }
-    }
-  ```
-- Click **Sync Now** in the top-right corner of Android Studio or go to **File → Sync Project with Gradle Files**.
-### 3. Configure AndroidManifest.xml
-- Open AndroidManifest.xml and add an `intent-filter` to the activity you want to open when a user clicks the App Link:
+## 📌 1. Create & Configure Your PolarGX Project
 
-  ```
-  <activity
-      android:name=".MainActivity"
-      android:exported="true">
-      <intent-filter android:autoVerify="true">
-          <action android:name="android.intent.action.VIEW" />
-          <category android:name="android.intent.category.DEFAULT" />
-          <category android:name="android.intent.category.BROWSABLE" />
-  
-          <!-- Replace subdomain with your domain from PolarGX -->
-          <data android:scheme="https" />
-          <data android:host="{subdomain}.gxlnk.com" />
-          <data android:host="{subdomain}-alternate.gxlnk.com" />
-      </intent-filter>
-  </activity>
-  ```
-### 4. Use PolarGX SDK
-- Get _App Id_ and _API Key_ from https://app.polargx.com.
-- In MyApplication.kt:
+### **1.1. Create PolarGX Account & Project**
 
-  ```
-  override fun onCreate() {
-      super.onCreate()
-  
-      Polar.isLoggingEnabled = true
-      Polar.initialize(
-          application = this,
-          appId = YOUR_APP_ID,
-          apiKey = YOUR_API_KEY
-      )
-  }
-  ```
-- In MainActivity.kt:
+1.  Register a new account at **https://app.polargx.com**
+2.  Enter your **Company Name** and **PolarGX Domain**, then select
+    **Continue** to create your project
 
-   ```
-   private val polarInitListener = PolarInitListener { attributes, error ->
-       // Handle app link
-   }
+### **1.2. Generate API Key**
 
-   override fun onStart() {
-       super.onStart()
-       Polar.bind(
-           activity = this,
-           uri = intent?.data,
-           listener = polarInitListener
-       )
-   }
+Navigate to:
 
-   override fun onNewIntent(intent: Intent) {
-       super.onNewIntent(intent)
-       Polar.reBind(
-           activity = this,
-           uri = intent.data,
-           listener = polarInitListener
-       )
-   }
-   ```
+`Configurations → API Keys → Generate New Key`
+
+-   Enter **Key Name** and **Key Description**
+-   Choose purpose: **Mobile apps / frontend**
+-   Keep the key secure for later use
+
+### **1.3. Configure Web Domain**
+
+Go to:
+
+`Configurations → Web Domain → Domain Configuration`
+
+Select the following:
+
+-   **PolarGX Subdomain**
+-   **Custom Domain**
+
+### **1.4. Configure Android Redirects**
+
+Navigate to:
+
+`Configurations → Link → Required Redirects → Android Redirects`
+
+You must configure 3 types of redirects:
+
+#### **1. Custom URL**
+
+Used when your app is not installed (fallback to Google Play or a custom
+link)\
+Example: `https://play.google.com/store/apps/details?id={your.package.name}`
+
+#### **2. App Links**
+
+Used to open the app directly when installed
+
+Steps:
+
+``` bash
+# Mac
+./gradlew signingReport
+
+# Windows
+gradlew signingReport
+```
+
+-   Use the **SHA-256 fingerprint** from the output
+-   Add it to your App Links configuration
+
+#### **3. Scheme URI**
+
+Used when App Links cannot open the app
+
+Example:
+
+    yourapp_schemeurl://
+
+### **1.5. Configure Google Cloud Messaging (GCM / FCM)**
+
+Go to:
+
+`Configurations → Push Service → New Push Service`
+
+Steps:
+
+1.  Enter **Service Name** and **Package Name (Android)** or **Bundle ID
+    (iOS)**.\
+2.  Follow the instructions to configure **Firebase Cloud Messaging
+    (FCM/GCM)**.\
+3.  Upload the downloaded **JSON** file.\
+4.  After creation, select **Test Push** to send a test notification.
+
+------------------------------------------------------------------------
+
+## 📌 2. Add PolarGX SDK to Android Project
+
+### **2.1. Add SDK Dependency**
+
+In `build.gradle` (Module: app):
+
+``` gradle
+dependencies {
+    implementation "com.github.polargx:polargx-android-sdk:v3.1.7"
+}
+```
+
+> 💡 Check for the latest version on JitPack.
+
+### **2.2. Add JitPack Repository**
+
+In `settings.gradle`:
+
+``` gradle
+repositories {
+    maven { url = uri("https://jitpack.io") }
+}
+```
+
+Then click **Sync Now** in Android Studio.
+
+------------------------------------------------------------------------
+
+## 📌 3. Configure AndroidManifest.xml
+
+Add the following intent filters to the activity that will handle deep
+links:
+
+``` xml
+<!-- Internal Scheme -->
+<intent-filter>
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="briskbhm.testing" />
+</intent-filter>
+
+<!-- Universal Link -->
+<intent-filter android:autoVerify="true">
+    <action android:name="android.intent.action.VIEW" />
+    <category android:name="android.intent.category.DEFAULT" />
+    <category android:name="android.intent.category.BROWSABLE" />
+    <data android:scheme="https" />
+    <data android:host="{sub-domain}.biglittlecookies.com" />
+</intent-filter>
+```
+
+------------------------------------------------------------------------
+
+## 📌 4. Initialize and Use PolarGX SDK
+
+### **4.1. Get Required Credentials**
+
+Get your **App ID** and **API Key** from:\
+https://app.polargx.com
+
+### **4.2. Initialize SDK in `MyApplication.kt`**
+
+``` kotlin
+override fun onCreate() {
+    super.onCreate()
+
+    PolarApp.isLoggingEnabled = true
+    Polar.initialize(
+        application = this,
+        appId = YOUR_APP_ID,
+        apiKey = YOUR_API_KEY
+    )
+    PolarApp.initialize(
+        application = application,
+        appId = BuildConfig.POLAR_APP_ID,
+        apiKey = BuildConfig.POLAR_API_KEY,
+        onLinkClickHandler = { link, data, error ->
+            // TODO: Handle link click here
+        }
+    )
+}
+```
+
+------------------------------------------------------------------------
+
+### **4.3. Bind Link Handling in `MainActivity.kt`**
+
+``` kotlin
+override fun onStart() {
+    super.onStart()
+    PolarApp.shared.bind(
+        uri = uri,
+        listener = PolarInitListener { attributes, error ->
+            // TODO: Handle logic here
+        }
+    )
+}
+
+override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    PolarApp.shared.reBind(
+        uri = uri,
+        listener = PolarInitListener { attributes, error ->
+            // TODO: Handle logic here
+        }
+    )
+}
+```
+
+------------------------------------------------------------------------
+
+## 🎉 Setup Complete!
+
+You're ready to integrate PolarGX features such as deep links,
+analytics, and push notifications.
