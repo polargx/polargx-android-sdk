@@ -8,38 +8,38 @@ and initialization in your application.
 
 ### **1.1. Create PolarGX Account & Project**
 
-1.  Register a new account at **https://app.polargx.com**
-2.  Enter your **Company Name** and **PolarGX Domain**, then select
-    **Continue** to create your project
+-   Register a new account at **https://app.polargx.com**
+-   Enter your **Company Name** and **PolarGX Domain**, select **Continue** to create your project
 
 ### **1.2. Generate API Key**
 
-Navigate to:
+Go to:
 
-`Configurations → API Keys → Generate New Key`
+`Configurations → API Keys`
 
+-   Click **Generate New Key** to create API key
 -   Enter **Key Name** and **Key Description**
 -   Choose purpose: **Mobile apps / frontend**
--   Keep the key secure for later use
+-   Click **Create Key**
 
 ### **1.3. Configure Web Domain**
 
 Go to:
 
-`Configurations → Web Domain → Domain Configuration`
+`Configurations → Web Domain`
 
-Select the following:
+In **Domain Configuration** section, select the following:
 
 -   **PolarGX Subdomain**
 -   **Custom Domain**
 
 ### **1.4. Configure Android Redirects**
 
-Navigate to:
+Go to:
 
-`Configurations → Link → Required Redirects → Android Redirects`
+`Configurations → Link`
 
-You must configure 3 types of redirects:
+In **Android Redirects**, you must configure 3 types of redirects:
 
 #### **1. Custom URL**
 
@@ -72,20 +72,20 @@ Example:
 
     yourapp_schemeurl://
 
-### **1.5. Configure Google Cloud Messaging (GCM / FCM)**
+### **1.5. Configure Push Notifications**
 
 Go to:
 
-`Configurations → Push Service → New Push Service`
+`Configurations → Push Services`
 
 Steps:
 
-1.  Enter **Service Name** and **Package Name (Android)** or **Bundle ID
-    (iOS)**.\
-2.  Follow the instructions to configure **Firebase Cloud Messaging
-    (FCM/GCM)**.\
-3.  Upload the downloaded **JSON** file.\
-4.  After creation, select **Test Push** to send a test notification.
+1.  Click **New Push Service** to create push service
+2.  In **Platform Selection**, select **Google Cloud Messaging (GCM)**
+3.  In **Platform Configuration**:\
+3.1.  Enter **Service Name** and **Package Name (Android) / Bundle ID (iOS)**\
+3.2.  Follow **How to Configure Firebase Cloud Messaging (FCM/GCM)** instruction and upload the downloaded **JSON** file 
+4.  Click **Create Push Service**
 
 ------------------------------------------------------------------------
 
@@ -147,8 +147,7 @@ links:
 
 ### **4.1. Get Required Credentials**
 
-Get your **App ID** and **API Key** from:\
-https://app.polargx.com
+Get your **App ID** and **API Key** from **https://app.polargx.com**
 
 ### **4.2. Initialize SDK in `MyApplication.kt`**
 
