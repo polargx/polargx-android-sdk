@@ -1,15 +1,31 @@
 package com.polargx.demo_app
 
+import android.app.ComponentCaller
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import com.library.polargx.Constants.PolarEventKey
+import com.android.installreferrer.api.InstallReferrerClient
+import com.android.installreferrer.api.InstallReferrerStateListener
 import com.library.polargx.PolarApp
+import com.library.polargx.PolarConstants
+import com.library.polargx.listener.PolarInitListener
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class DemoActivity : AppCompatActivity() {
+    companion object {
+        const val TAG = ">>>PolarDemoActivity"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -19,51 +35,153 @@ class DemoActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
             insets
         }
-
-        PolarApp.isLoggingEnabled = true
-        PolarApp.initialize(
-            application = application,
-            appId = "0105f9f4-95f3-4d2d-8a58-134d4c9fec66",
-            apiKey = "dev_0fSHR94kXZ4XZCitPR5B26vlwLUekwpk8w4sHSUF",
-            onLinkClickHandler = { link, data, error ->
-                Log.d("Polar", "\n[DEMO] detect clicked: $link, data: $data, error: $error\n")
-            }
-        )
-
-        PolarApp.shared.updateUser(
-            userID = "e1a3cb25-839e-4deb-95b0-2fb8ebd79401",
-            attributes = mapOf(
-                PolarEventKey.Name to "a",
-                PolarEventKey.Email to "a@gmail.com"
+        CoroutineScope(Dispatchers.IO).launch {
+            PolarApp.shared.updateUser(
+                userID = "ccafd507-88a7-4eb0-b9fe-100d2460dede",
+                attributes = mapOf(
+                    PolarConstants.PolarEventKey.Name to "nhn.gl03",
+                    PolarConstants.PolarEventKey.Email to "nhn.gl03@gmail.com",
+                    "datap1" to mapOf(
+                        "datasub1" to 1,
+                        "datasub2" to false,
+                        "datasub3" to "hele",
+                        "datasub4" to null,
+                        "datasub5" to 2f
+                    )
+                )
             )
+
+            PolarApp.shared.setGCM(fcmToken = "fcm_token_test")
+        }
+        registerReceiver(
+            object : BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    Log.d(TAG, "onReceive: action=${intent?.action}")
+                    when (intent?.action) {
+                        PolarConstants.RATE_LIMIT_WAITED_ACTION -> {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                delay(500)
+                                PolarApp.shared.updateUser(
+                                    userID = "ccafd507-88a7-4eb0-b9fe-100d2460dede",
+                                    attributes = mapOf(
+                                        PolarConstants.PolarEventKey.Name to "nhn.gl03",
+                                        PolarConstants.PolarEventKey.Email to "nhn.gl03@gmail.com",
+                                        "datap1" to mapOf(
+                                            "datasub1" to 1,
+                                            "datasub2" to false,
+                                            "datasub3" to "update user while waiting for rate limit",
+                                            "datasub4" to null,
+                                            "datasub5" to 2f
+                                        )
+                                    )
+                                )
+//                                PolarApp.shared.trackEvent(
+//                                    name = "test_event",
+//                                    attributes = mapOf(
+//                                        "datap1" to mapOf(
+//                                            "datasub1" to 1,
+//                                            "datasub2" to false,
+//                                            "datasub3" to "send while waiting for rate limit",
+//                                            "datasub4" to null,
+//                                            "datasub5" to 5f
+//                                        )
+//                                    )
+//                                )
+                            }
+                        }
+                    }
+                }
+            },
+            IntentFilter().apply {
+                addAction(PolarConstants.RATE_LIMIT_WAITED_ACTION)
+
+            },
+            Context.RECEIVER_EXPORTED
         )
 
-//        PolarApp.shared.updateUser(
-//            userID = "e1a3cb25-839e-4deb-95b0-2fb8ebd79402",
-//            attributes = mapOf(
-//                PolarEventKey.Name to "b",
-//                PolarEventKey.Email to "b@gmail.com",
-//                "datap1" to mapOf(
-//                    "datasub1" to 1,
-//                    "datasub2" to false,
-//                    "datasub3" to "hele",
-//                    "datasub4" to null,
-//                    "datasub5" to 5f
+//        for (i in 1..1) {
+//            CoroutineScope(Dispatchers.IO).launch {
+//                PolarApp.shared.trackEvent(
+//                    name = "test_event",
+//                    attributes = mapOf(
+//                        "datap1" to mapOf(
+//                            "datasub1" to 1,
+//                            "datasub2" to false,
+//                            "datasub3" to "hele",
+//                            "datasub4" to null,
+//                            "datasub5" to 5f
+//                        )
+//                    )
 //                )
-//            )
-//        )
+//            }
+//        }
+    }
 
-//        PolarApp.shared.trackEvent(
-//            name = "test_event",
-//            attributes = mapOf(
-//                "datap1" to mapOf(
-//                    "datasub1" to 1,
-//                    "datasub2" to false,
-//                    "datasub3" to "hele",
-//                    "datasub4" to null,
-//                    "datasub5" to 5f
-//                )
-//            )
-//        )
+    private val mPolarInitListener = object : PolarInitListener {
+        override fun onInitFinished(
+            attributes: Map<String, Any?>?,
+            error: Throwable?
+        ) {
+            Log.d(TAG, "onInitFinished: attributes=$attributes, error=$error")
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        val uri = intent?.data
+        PolarApp.shared.bind(
+            uri = uri,
+            listener = mPolarInitListener
+        )
+        if (uri == null) {
+            fetchInstallReferrer { url ->
+                PolarApp.shared.matchLinkClick(url)
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent, caller: ComponentCaller) {
+        super.onNewIntent(intent, caller)
+        val uri = intent.data
+        PolarApp.shared.reBind(
+            uri = uri,
+            listener = mPolarInitListener
+        )
+        if (uri == null) {
+            fetchInstallReferrer { url ->
+                PolarApp.shared.matchLinkClick(url)
+            }
+        }
+    }
+
+    private fun fetchInstallReferrer(onResult: (String?) -> Unit) {
+        val referrerClient = InstallReferrerClient.newBuilder(this).build()
+
+        referrerClient.startConnection(object : InstallReferrerStateListener {
+            override fun onInstallReferrerSetupFinished(responseCode: Int) {
+                when (responseCode) {
+                    InstallReferrerClient.InstallReferrerResponse.OK -> {
+                        try {
+                            val response = referrerClient.installReferrer
+                            val referrerUrl = response.installReferrer
+                            onResult(referrerUrl)
+                        } catch (e: Exception) {
+                            onResult(null)
+                        } finally {
+                            referrerClient.endConnection()
+                        }
+                    }
+
+                    else -> {
+                        onResult(null)
+                        referrerClient.endConnection()
+                    }
+                }
+            }
+
+            override fun onInstallReferrerServiceDisconnected() {
+
+            }
+        })
     }
 }

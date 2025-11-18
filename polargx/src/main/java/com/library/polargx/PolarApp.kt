@@ -7,8 +7,8 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.window.layout.WindowMetricsCalculator
 import com.library.polargx.api.ApiService
-import com.library.polargx.api.track_link.TrackLinkClickRequest
-import com.library.polargx.api.update_link.UpdateLinkClickRequest
+import com.library.polargx.data.links.remote.track_link.TrackLinkClickRequest
+import com.library.polargx.data.links.local.update_link.UpdateLinkClickRequest
 import com.library.polargx.di.polarModule
 import com.library.polargx.extension.getDeviceModel
 import com.library.polargx.extension.getDeviceName
@@ -23,10 +23,13 @@ import com.library.polargx.helpers.Logger
 import com.library.polargx.listener.PolarInitListener
 import com.library.polargx.models.LinkDataModel
 import com.library.polargx.models.TrackEventModel
+import com.library.polargx.models.push.PushToken
+import com.library.polargx.session.DeregisterPushQueue
+import com.library.polargx.session.TrackingEventQueue
+import com.library.polargx.session.UserSession
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.koin.androidContext
@@ -69,12 +72,20 @@ private class InternalPolarApp(
 
     private var currentUserSession: UserSession? = null
     private val otherUserSessions = mutableListOf<UserSession>()
+
     private var pendingEvents = arrayListOf<UntrackedEvent>()
+
+    private var deregisterPushQueue: DeregisterPushQueue? = null
+    private var currentPushToken: PushToken? = null
 
     init {
         if (apiKey.startsWith("dev_")) {
             apiKey = apiKey.substring(4)
-            Configuration.Env = DevEnvConfiguration()
+            Configuration.Env = DevEnvConfiguration(isDebugging = false)
+
+        } else if (apiKey.startsWith("deb_")) {
+            apiKey = apiKey.substring(4)
+            Configuration.Env = DevEnvConfiguration(isDebugging = true)
         }
 
         pendingEvents.ensureCapacity(pendingEventsCapacity)
@@ -99,13 +110,26 @@ private class InternalPolarApp(
         }
     }
 
-    fun startInitializingApp() {
-        startTrackingAppLifeCycle()
+    private fun getPackageName(): String? {
+        return application.packageName
+//        return "com.vintagewalk.longevity.staging"
+    }
 
-        val pendingEventFiles = FileStorage
-            .listFiles(appDirectory)
-            .filter { it.startsWith("events_") }
-        startResolvingPendingEvents(pendingEventFiles)
+    fun startInitializingApp() {
+        CoroutineScope(Dispatchers.Main).launch {
+            startTrackingAppLifeCycle()
+
+            deregisterPushQueue = DeregisterPushQueue(
+                packageName = getPackageName(),
+                organizationUnid = appId,
+                file = appDirectory.file("pending_users_deregister_push.json"),
+            )
+
+            val pendingEventFiles = FileStorage
+                .listFiles(appDirectory)
+                .filter { it.startsWith("events_") }
+            startResolvingPendingEvents(pendingEventFiles)
+        }
     }
 
     override fun bind(uri: Uri?, listener: PolarInitListener?) {
@@ -136,16 +160,26 @@ private class InternalPolarApp(
      * - Backup user session into the otherUserSessions to keep running for sending events
      */
     override fun updateUser(userID: String?, attributes: Map<String, Any?>?) {
+        Logger.d(TAG, "updateUser: userID=$userID")
+        setUser(userID = userID, attributes = attributes)
+    }
+
+    private fun setUser(userID: String?, attributes: Map<String, Any?>?) {
         CoroutineScope(Dispatchers.Main).launch {
             currentUserSession?.let { userSession ->
                 if (userSession.userID != userID) {
                     currentUserSession = null
                     otherUserSessions.add(userSession)
+
                     userSession.invalidate()
+
+                    deregisterPushQueue?.push(userSession.userID)
+                    deregisterPushQueue?.startDeregisteringPushIfNeeded()
                 }
             }
 
             var events = mutableListOf<UntrackedEvent>()
+            var pushToken: PushToken? = null
             if (currentUserSession == null && userID != null) {
                 val name = "events_${Date().time}_${UUID.randomUUID()}.json"
                 val file = appDirectory.file(name)
@@ -153,46 +187,61 @@ private class InternalPolarApp(
 
                 events = pendingEvents
                 pendingEvents = arrayListOf()
+                pendingEvents.ensureCapacity(pendingEventsCapacity)
+
+                pushToken = currentPushToken
 
                 currentUserSession = UserSession(
                     organizationUnid = appId,
+                    packageName = getPackageName(),
                     userID = userID,
                     trackingFileStorage = file
                 )
             }
-
-            withContext(Dispatchers.IO) {
-                listOf(
-                    async { currentUserSession?.trackEvents(events) },
-                    async { currentUserSession?.setAttributes(attributes ?: emptyMap()) }
+            currentUserSession?.trackEvents(events)
+            pushToken?.let {
+                currentUserSession?.setPushToken(
+                    context = application,
+                    pushToken = pushToken
                 )
             }
+            currentUserSession?.setAttributes(attributes ?: emptyMap())
         }
     }
 
-    override fun setPushToken(fcm: String?) {
-        CoroutineScope(Dispatchers.Main).launch {
+    override fun setGCM(fcmToken: String?) {
+        if (fcmToken.isNullOrEmpty()) return
+        setPushToken(
+            pushToken = PushToken.GCM(token = fcmToken)
+        )
+    }
+
+    private fun setPushToken(pushToken: PushToken) {
+        CoroutineScope(Dispatchers.IO).launch {
+            currentPushToken = pushToken
             currentUserSession?.let { userSession ->
                 withContext(Dispatchers.IO) {
-                    userSession.setPushToken(fcm)
+                    userSession.setPushToken(
+                        context = application,
+                        pushToken = pushToken
+                    )
                 }
             }
+            deregisterPushQueue?.setPushToken(pushToken)
         }
     }
 
     override fun trackEvent(name: String, attributes: Map<String, Any?>) {
-        CoroutineScope(Dispatchers.Main).launch {
+        CoroutineScope(Dispatchers.IO).launch {
             val date = DateTimeUtils.dateToString(
                 source = Date(),
-                format = Constants.DateTime.DEFAULT_DATE_FORMAT,
-                timeZone = Constants.DateTime.utcTimeZone,
+                format = PolarConstants.DateTime.DEFAULT_DATE_FORMAT,
+                timeZone = PolarConstants.DateTime.utcTimeZone,
             )
             val userSession = currentUserSession
             if (userSession != null) {
-                withContext(Dispatchers.IO) {
-                    val events = listOf(UntrackedEvent(name, date, attributes))
-                    userSession.trackEvents(events)
-                }
+                val events = listOf(UntrackedEvent(name, date, attributes))
+                userSession.trackEvents(events)
             } else {
                 if (pendingEvents.size == pendingEventsCapacity) {
                     pendingEvents.removeAt(0)
@@ -203,17 +252,17 @@ private class InternalPolarApp(
     }
 
     override fun matchLinkClick(url: String?) {
-        if (url.isNullOrEmpty()) return
-        val params = url.split("&").associate {
-            val parts = it.split("=")
-            parts[0] to parts.getOrElse(1) { "" }
-        }
-        val utmSource = params["__utm_source"]
-        val subdomain = params["__subdomain"]
-        val slug = params["__slug"]
-        val clid = params["__clid"]
-        if (utmSource != "polar") return
         CoroutineScope(Dispatchers.IO).launch {
+            if (url.isNullOrEmpty()) return@launch
+            val params = url.split("&").associate {
+                val parts = it.split("=")
+                parts[0] to parts.getOrElse(1) { "" }
+            }
+            val utmSource = params["__utm_source"]
+            val subdomain = params["__subdomain"]
+            val slug = params["__slug"]
+            val clid = params["__clid"]
+            if (utmSource != "polar") return@launch
             handleOpeningURL(subdomain = subdomain, slug = slug, clid = clid)
         }
     }
@@ -261,28 +310,32 @@ private class InternalPolarApp(
         })
     }
 
-    private fun startResolvingPendingEvents(pendingEventFiles: List<String>) {
-        CoroutineScope(Dispatchers.IO).launch {
-            pendingEventFiles.forEach { pendingEventFile ->
-                val file = appDirectory.file(pendingEventFile)
-                val eventQueue = TrackingEventQueue(file)
+    private suspend fun startResolvingPendingEvents(
+        pendingEventFiles: List<String>
+    ) = withContext(Dispatchers.IO) {
+        pendingEventFiles.forEach { pendingEventFile ->
+            val file = appDirectory.file(pendingEventFile)
+            val eventQueue = TrackingEventQueue(file)
 
-                if (eventQueue.events.isEmpty()) {
-                    FileStorage.remove(pendingEventFile, appDirectory)
-                    return@forEach
-                }
+            if (eventQueue.events.isEmpty()) {
+                FileStorage.remove(pendingEventFile, appDirectory)
+                return@forEach
+            }
 
-                eventQueue.setReady()
-                eventQueue.sendEventsIfNeeded()
+            eventQueue.setReady(true)
+            eventQueue.sendEventsIfNeeded()
 
-                if (eventQueue.events.isEmpty()) {
-                    FileStorage.remove(pendingEventFile, appDirectory)
-                }
+            if (eventQueue.events.isEmpty()) {
+                FileStorage.remove(pendingEventFile, appDirectory)
             }
         }
     }
 
-    private suspend fun handleOpeningURL(subdomain: String?, slug: String?, clid: String?) {
+    private suspend fun handleOpeningURL(
+        subdomain: String?,
+        slug: String?,
+        clid: String?
+    ) {
         if (subdomain.isNullOrEmpty() && slug.isNullOrEmpty()) {
             mLastListener?.onInitFinished(null, null)
             return
@@ -290,8 +343,8 @@ private class InternalPolarApp(
 
         val clickTime = DateTimeUtils.dateToString(
             Date(),
-            Constants.DateTime.DEFAULT_DATE_FORMAT,
-            Constants.DateTime.utcTimeZone,
+            PolarConstants.DateTime.DEFAULT_DATE_FORMAT,
+            PolarConstants.DateTime.utcTimeZone,
         )
 
         try {
@@ -348,8 +401,8 @@ private class InternalPolarApp(
         )
         val clickTime = DateTimeUtils.dateToString(
             Date(),
-            Constants.DateTime.DEFAULT_DATE_FORMAT,
-            Constants.DateTime.utcTimeZone,
+            PolarConstants.DateTime.DEFAULT_DATE_FORMAT,
+            PolarConstants.DateTime.utcTimeZone,
         )
         if (!uri.path.isNullOrEmpty()) {
             try {
@@ -438,7 +491,7 @@ open class PolarApp {
     open fun bind(uri: Uri?, listener: PolarInitListener?) {}
     open fun reBind(uri: Uri?, listener: PolarInitListener?) {}
     open fun updateUser(userID: String?, attributes: Map<String, Any?>?) {}
-    open fun setPushToken(fcm: String?) {}
+    open fun setGCM(fcmToken: String?) {}
     open fun trackEvent(name: String, attributes: Map<String, Any?>) {}
     open fun matchLinkClick(url: String?) {}
 

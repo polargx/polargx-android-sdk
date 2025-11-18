@@ -1,35 +1,14 @@
 package com.library.polargx.api
 
 import android.content.Context
-import com.library.polargx.api.device_tokens.deregister.DeregisterDeviceTokenRequest
-import com.library.polargx.api.device_tokens.register.RegisterDeviceTokenRequest
-import com.library.polargx.api.fcm_tokens.deregister.DeregisterFCMRequest
-import com.library.polargx.api.update_user.UpdateUserRequest
-import com.library.polargx.api.track_event.TrackEventRequest
+import com.library.polargx.data.tracking.remote.update_user.UpdateUserRequest
+import com.library.polargx.data.tracking.remote.track_event.TrackEventRequest
 import com.library.polargx.models.LinkClickModel
 import com.library.polargx.models.LinkDataModel
-import com.library.polargx.api.update_link.UpdateLinkClickRequest
-import com.library.polargx.api.track_link.TrackLinkClickRequest
-import com.library.polargx.api.fcm_tokens.register.RegisterFCMRequest
-import com.library.polargx.models.ClientInfoModel
+import com.library.polargx.data.links.local.update_link.UpdateLinkClickRequest
+import com.library.polargx.data.links.remote.track_link.TrackLinkClickRequest
 
 interface ApiService {
-
-    // -------------------- Tracking --------------------
-
-    suspend fun updateUser(request: UpdateUserRequest?)
-
-    suspend fun trackEvent(request: TrackEventRequest?)
-
-    // -------------------- Push --------------------
-
-    suspend fun registerFCM(request: RegisterFCMRequest?)
-
-    suspend fun deregisterFCM(request: DeregisterFCMRequest?)
-
-    suspend fun registerDeviceToken(request: RegisterDeviceTokenRequest?)
-
-    suspend fun deregisterDeviceToken(request: DeregisterDeviceTokenRequest?)
 
     // -------------------- Links --------------------
 

@@ -72,6 +72,7 @@ daimajiaSwipelayout = "1.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "core" }
+installreferrer = { group = "com.android.installreferrer", name = "installreferrer", version = "2.2" }
 app-compat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appCompat" }
 daimajia-swipelayout = { group = "com.daimajia.swipelayout", name = "library", version.ref = "daimajiaSwipelayout" }
 
@@ -148,7 +149,7 @@ android-browser-helper = { group = "com.google.androidbrowserhelper", name = "an
 
 # Compose
 #compose_bom = { module = "androidx.compose:compose-bom", version = "2024.11.00" }
-activity_compose = { module = "androidx.activity:activity-compose", version = "1.11.0" }
+activity_compose = { module = "androidx.activity:activity-compose", version = "1.9.1" }
 ui = { module = "androidx.compose.ui:ui" }
 ui_graphics = { module = "androidx.compose.ui:ui-graphics" }
 
