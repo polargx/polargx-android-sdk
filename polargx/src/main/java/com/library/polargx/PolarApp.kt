@@ -212,7 +212,7 @@ private class InternalPolarApp(
                             userID = userID,
                             eventName = PolarConstants.InternalEvent.USER_SESSION_START,
                             eventTime = sessionStartedAtStr,
-                            data = attributes
+                            data = mutableMapOf()
                         )
                     )
                 )
