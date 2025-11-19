@@ -235,7 +235,7 @@ private class InternalPolarApp(
         CoroutineScope(Dispatchers.IO).launch {
             val date = DateTimeUtils.dateToString(
                 source = Date(),
-                format = PolarConstants.DateTime.DEFAULT_DATE_FORMAT,
+                format = PolarConstants.DateTime.BackendDateTimeMsFormat,
                 timeZone = PolarConstants.DateTime.utcTimeZone,
             )
             val userSession = currentUserSession
@@ -263,7 +263,7 @@ private class InternalPolarApp(
             val slug = params["__slug"]
             val clid = params["__clid"]
             if (utmSource != "polar") return@launch
-            handleOpeningURL(subdomain = subdomain, slug = slug, clid = clid)
+            handleOpeningURL(url = url, subdomain = subdomain, slug = slug, clid = clid)
         }
     }
 
@@ -275,35 +275,35 @@ private class InternalPolarApp(
 
             override fun onStart(owner: LifecycleOwner) {
                 trackEvent(
-                    name = TrackEventModel.Type.APP_OPEN,
+                    name = PolarConstants.InternalEvent.APP_OPEN,
                     attributes = mapOf()
                 )
             }
 
             override fun onResume(owner: LifecycleOwner) {
                 trackEvent(
-                    name = TrackEventModel.Type.APP_ACTIVE,
+                    name = PolarConstants.InternalEvent.APP_ACTIVE,
                     attributes = mapOf()
                 )
             }
 
             override fun onPause(owner: LifecycleOwner) {
                 trackEvent(
-                    name = TrackEventModel.Type.APP_INACTIVE,
+                    name = PolarConstants.InternalEvent.APP_INACTIVE,
                     attributes = mapOf()
                 )
             }
 
             override fun onStop(owner: LifecycleOwner) {
                 trackEvent(
-                    name = TrackEventModel.Type.APP_CLOSE,
+                    name = PolarConstants.InternalEvent.APP_CLOSE,
                     attributes = mapOf()
                 )
             }
 
             override fun onDestroy(owner: LifecycleOwner) {
                 trackEvent(
-                    name = TrackEventModel.Type.APP_TERMINATE,
+                    name = PolarConstants.InternalEvent.APP_TERMINATE,
                     attributes = mapOf()
                 )
             }
@@ -332,6 +332,7 @@ private class InternalPolarApp(
     }
 
     private suspend fun handleOpeningURL(
+        url: String?,
         subdomain: String?,
         slug: String?,
         clid: String?
@@ -343,7 +344,7 @@ private class InternalPolarApp(
 
         val clickTime = DateTimeUtils.dateToString(
             Date(),
-            PolarConstants.DateTime.DEFAULT_DATE_FORMAT,
+            PolarConstants.DateTime.BackendDateTimeMsFormat,
             PolarConstants.DateTime.utcTimeZone,
         )
 
@@ -366,16 +367,24 @@ private class InternalPolarApp(
                 additionalData = mapOf(),
             )
 
+            val clickUnid: String?
             if (clid.isNullOrEmpty()) {
                 val linkClick = apiService.trackLinkClick(trackRequest)
-                val clickUnid = linkClick?.unid
+                clickUnid = linkClick?.unid
                 val request = UpdateLinkClickRequest(sdkUsed = true)
                 apiService.updateLinkClick(clickUnid, request)
             } else {
                 val request = UpdateLinkClickRequest(sdkUsed = true)
-                apiService.updateLinkClick(clid, request)
+                clickUnid = clid
+                apiService.updateLinkClick(clickUnid, request)
             }
-
+            trackEvent(
+                name = PolarConstants.InternalEvent.LINK_CLICK,
+                attributes = mapOf(
+                    "link" to url,
+                    "clickUnid" to clickUnid
+                )
+            )
             onLinkClickHandler.onLinkClick(linkUrl, mLastLink?.data?.content, null)
             mLastListener?.onInitFinished(mLastLink?.data?.content, null)
         } catch (e: Exception) {
@@ -401,7 +410,7 @@ private class InternalPolarApp(
         )
         val clickTime = DateTimeUtils.dateToString(
             Date(),
-            PolarConstants.DateTime.DEFAULT_DATE_FORMAT,
+            PolarConstants.DateTime.BackendDateTimeMsFormat,
             PolarConstants.DateTime.utcTimeZone,
         )
         if (!uri.path.isNullOrEmpty()) {
@@ -419,15 +428,25 @@ private class InternalPolarApp(
                 )
                 val clid = uri.getQueryParameter("__clid")
 
+                val clickUnid: String?
                 if (clid.isNullOrEmpty()) {
                     val linkClick = apiService.trackLinkClick(trackRequest)
-                    val clickUnid = linkClick?.unid
+                    clickUnid = linkClick?.unid
                     val request = UpdateLinkClickRequest(sdkUsed = true)
                     apiService.updateLinkClick(clickUnid, request)
                 } else {
                     val request = UpdateLinkClickRequest(sdkUsed = true)
+                    clickUnid = clid
                     apiService.updateLinkClick(clid, request)
                 }
+                trackEvent(
+                    name = PolarConstants.InternalEvent.LINK_CLICK,
+                    attributes = mapOf(
+                        "link" to uri.path,
+                        "clickUnid" to clickUnid
+                    )
+                )
+
                 onLinkClickHandler.onLinkClick(uri.toString(), mLastLink?.data?.content, null)
                 mLastListener?.onInitFinished(mLastLink?.data?.content, null)
             } catch (e: Exception) {
