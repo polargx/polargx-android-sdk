@@ -40,6 +40,7 @@ import org.koin.core.context.GlobalContext
 import org.koin.core.context.loadKoinModules
 import org.koin.core.context.startKoin
 import java.net.URI
+import java.util.Calendar
 import java.util.Date
 import java.util.UUID
 
@@ -191,11 +192,29 @@ private class InternalPolarApp(
 
                 pushToken = currentPushToken
 
+                val sessionStartedAt = Calendar.getInstance()
+                val sessionStartedAtStr = DateTimeUtils.calendarToString(
+                    source = sessionStartedAt,
+                    format = PolarConstants.DateTime.BackendDateTimeMsFormat,
+                    timeZone = PolarConstants.DateTime.utcTimeZone,
+                )
                 currentUserSession = UserSession(
                     organizationUnid = appId,
                     packageName = getPackageName(),
                     userID = userID,
-                    trackingFileStorage = file
+                    trackingFileStorage = file,
+                    sessionStartedAt = sessionStartedAtStr
+                )
+                currentUserSession?.track(
+                    listOf(
+                        TrackEventModel(
+                            organizationUnid = appId,
+                            userID = userID,
+                            eventName = PolarConstants.InternalEvent.USER_SESSION_START,
+                            eventTime = sessionStartedAtStr,
+                            data = attributes
+                        )
+                    )
                 )
             }
             currentUserSession?.trackEvents(events)
