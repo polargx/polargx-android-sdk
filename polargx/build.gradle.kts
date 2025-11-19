@@ -99,7 +99,7 @@ afterEvaluate {
             register<MavenPublication>("release") {
                 groupId = "com.github.polargx" // Replace with your GitHub username
                 artifactId = "polargx-android-sdk" // Replace with your library's name (e.g., my-awesome-library)
-                version = "3.1.7" // Initial version number (important!)
+                version = "3.1.8" // Initial version number (important!)
 
                 afterEvaluate {
                     from(components["release"])
