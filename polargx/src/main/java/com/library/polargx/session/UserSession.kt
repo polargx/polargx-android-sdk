@@ -7,7 +7,6 @@ import com.library.polargx.data.tracking.TrackingRepository
 import com.library.polargx.data.tracking.remote.update_user.UpdateUserRequest
 import com.library.polargx.extension.isConnection
 import com.library.polargx.helpers.ApiError
-import com.library.polargx.helpers.DateTimeUtils
 import com.library.polargx.helpers.Logger
 import com.library.polargx.helpers.SystemInfo
 import com.library.polargx.models.TrackEventModel
@@ -25,7 +24,6 @@ import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
-import java.util.Calendar
 
 /**
  * Purpose: create user if needed by calling UpdateUser api.
@@ -36,7 +34,8 @@ data class UserSession(
     val organizationUnid: String?,
     val packageName: String?,
     val userID: String?,
-    val trackingFileStorage: File?
+    val trackingFileStorage: File?,
+    val sessionStartedAt: String?,
 ) : KoinComponent {
 
     companion object {
@@ -45,7 +44,6 @@ data class UserSession(
 
     private val mTrackingRepository by inject<TrackingRepository>()
 
-    private var sessionStartedAt: Calendar? = null
     private var isValid = true
 
     private var attributes = mapOf<String, Any?>()
@@ -57,26 +55,9 @@ data class UserSession(
     private val registerPushWorker = RegisterPushWorker()
 
     init {
-        sessionStartedAt = Calendar.getInstance()
-        val sessionStartedAtStr = DateTimeUtils.calendarToString(
-            source = sessionStartedAt,
-            format = PolarConstants.DateTime.BackendDateTimeMsFormat,
-            timeZone = PolarConstants.DateTime.utcTimeZone,
-        )
         this.attributes += mapOf(
-            "lastSessionTime" to sessionStartedAtStr
+            "lastSessionTime" to sessionStartedAt
         )
-        CoroutineScope(Dispatchers.IO).launch {
-            trackingEventQueue.push(
-                TrackEventModel(
-                    organizationUnid = organizationUnid,
-                    userID = userID,
-                    eventName = PolarConstants.InternalEvent.USER_SESSION_START,
-                    eventTime = sessionStartedAtStr,
-                    data = attributes
-                )
-            )
-        }
     }
 
     /**
@@ -230,4 +211,15 @@ data class UserSession(
         trackingEventQueue.sendEventsIfNeeded()
     }
 
+    /**
+     * Track events for user.
+     */
+    suspend fun track(
+        events: List<TrackEventModel>?
+    ) = withContext(Dispatchers.IO) {
+        events?.map { event ->
+            trackingEventQueue.push(event)
+        }
+        trackingEventQueue.sendEventsIfNeeded()
+    }
 }
