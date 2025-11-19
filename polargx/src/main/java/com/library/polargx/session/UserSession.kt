@@ -3,12 +3,11 @@ package com.library.polargx.session
 import android.content.Context
 import com.library.polargx.PolarConstants
 import com.library.polargx.UntrackedEvent
-import com.library.polargx.data.push.PushRepository
-import com.library.polargx.data.push.remote.register.RegisterFCMRequest
 import com.library.polargx.data.tracking.TrackingRepository
 import com.library.polargx.data.tracking.remote.update_user.UpdateUserRequest
 import com.library.polargx.extension.isConnection
 import com.library.polargx.helpers.ApiError
+import com.library.polargx.helpers.DateTimeUtils
 import com.library.polargx.helpers.Logger
 import com.library.polargx.helpers.SystemInfo
 import com.library.polargx.models.TrackEventModel
@@ -26,6 +25,7 @@ import kotlinx.coroutines.withContext
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
 import java.io.File
+import java.util.Calendar
 
 /**
  * Purpose: create user if needed by calling UpdateUser api.
@@ -45,6 +45,7 @@ data class UserSession(
 
     private val mTrackingRepository by inject<TrackingRepository>()
 
+    private var sessionStartedAt: Calendar? = null
     private var isValid = true
 
     private var attributes = mapOf<String, Any?>()
@@ -54,6 +55,29 @@ data class UserSession(
 
     private val trackingEventQueue by lazy { TrackingEventQueue(trackingFileStorage) }
     private val registerPushWorker = RegisterPushWorker()
+
+    init {
+        sessionStartedAt = Calendar.getInstance()
+        val sessionStartedAtStr = DateTimeUtils.calendarToString(
+            source = sessionStartedAt,
+            format = PolarConstants.DateTime.BackendDateTimeMsFormat,
+            timeZone = PolarConstants.DateTime.utcTimeZone,
+        )
+        this.attributes += mapOf(
+            "lastSessionTime" to sessionStartedAtStr
+        )
+        CoroutineScope(Dispatchers.IO).launch {
+            trackingEventQueue.push(
+                TrackEventModel(
+                    organizationUnid = organizationUnid,
+                    userID = userID,
+                    eventName = PolarConstants.InternalEvent.USER_SESSION_START,
+                    eventTime = sessionStartedAtStr,
+                    data = attributes
+                )
+            )
+        }
+    }
 
     /**
      * Keep all user attributes for next sending. I don't make sure server supports to merging existing user attributes and the new attributes.

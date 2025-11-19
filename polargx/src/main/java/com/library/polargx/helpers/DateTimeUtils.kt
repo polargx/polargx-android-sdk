@@ -34,11 +34,12 @@ object DateTimeUtils {
     }
 
     fun calendarToString(
-        source: Calendar,
+        source: Calendar?,
         format: String = PolarConstants.DateTime.DEFAULT_DATE_FORMAT,
         timeZone: TimeZone? = TimeZone.getDefault(),
         locale: Locale = Locale.US
-    ): String {
+    ): String? {
+        if (source == null) return null
         return dateToString(source.time, format, timeZone, locale)
     }
 
