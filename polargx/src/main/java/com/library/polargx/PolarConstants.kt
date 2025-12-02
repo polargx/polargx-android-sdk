@@ -37,7 +37,7 @@ object PolarConstants {
 
     object Local {
         object Prefers {
-            const val FIRST_TIME_KEY = "first_time"
+            const val FIRST_TIME_LAUNCH_KEY = "first_time_launch"
             const val INSTALL_TIME_KEY = "install_time"
 
             object Event {
