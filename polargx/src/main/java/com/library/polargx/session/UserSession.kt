@@ -3,8 +3,6 @@ package com.library.polargx.session
 import android.content.Context
 import com.library.polargx.PolarConstants
 import com.library.polargx.UntrackedEvent
-import com.library.polargx.data.push.PushRepository
-import com.library.polargx.data.push.remote.register.RegisterFCMRequest
 import com.library.polargx.data.tracking.TrackingRepository
 import com.library.polargx.data.tracking.remote.update_user.UpdateUserRequest
 import com.library.polargx.extension.isConnection
@@ -36,7 +34,8 @@ data class UserSession(
     val organizationUnid: String?,
     val packageName: String?,
     val userID: String?,
-    val trackingFileStorage: File?
+    val trackingFileStorage: File?,
+    val sessionStartedAt: String?,
 ) : KoinComponent {
 
     companion object {
@@ -54,6 +53,12 @@ data class UserSession(
 
     private val trackingEventQueue by lazy { TrackingEventQueue(trackingFileStorage) }
     private val registerPushWorker = RegisterPushWorker()
+
+    init {
+        this.attributes += mapOf(
+            "lastSessionTime" to sessionStartedAt
+        )
+    }
 
     /**
      * Keep all user attributes for next sending. I don't make sure server supports to merging existing user attributes and the new attributes.
@@ -206,4 +211,15 @@ data class UserSession(
         trackingEventQueue.sendEventsIfNeeded()
     }
 
+    /**
+     * Track events for user.
+     */
+    suspend fun track(
+        events: List<TrackEventModel>?
+    ) = withContext(Dispatchers.IO) {
+        events?.map { event ->
+            trackingEventQueue.push(event)
+        }
+        trackingEventQueue.sendEventsIfNeeded()
+    }
 }
