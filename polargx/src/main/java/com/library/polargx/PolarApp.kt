@@ -6,7 +6,10 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import androidx.window.layout.WindowMetricsCalculator
+import com.android.installreferrer.api.InstallReferrerClient
+import com.android.installreferrer.api.InstallReferrerStateListener
 import com.library.polargx.api.ApiService
+import com.library.polargx.data.links.LinksRepository
 import com.library.polargx.data.links.remote.track_link.TrackLinkClickRequest
 import com.library.polargx.data.links.local.update_link.UpdateLinkClickRequest
 import com.library.polargx.di.polarModule
@@ -31,6 +34,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
@@ -43,6 +47,7 @@ import java.net.URI
 import java.util.Calendar
 import java.util.Date
 import java.util.UUID
+import kotlin.coroutines.resume
 
 typealias UntrackedEvent = Triple<String, String, Map<String, Any?>>
 
@@ -58,6 +63,7 @@ private class InternalPolarApp(
 ) : PolarApp(), KoinComponent {
 
     private val apiService by inject<ApiService>()
+    private val linksRepository by inject<LinksRepository>()
 
     private var mLastLink: LinkDataModel? = null
     private var mLastListener: PolarInitListener? = null
@@ -140,7 +146,24 @@ private class InternalPolarApp(
         }
         mGetLinkJob = CoroutineScope(Dispatchers.IO).launch {
             mLastListener = listener
-            handleOpeningURL(uri)
+            try {
+                val isFirstTimeLaunch = linksRepository.isFirstTimeLaunch()
+                if (isFirstTimeLaunch) {
+                    linksRepository.setFirstTimeLaunch(false)
+                }
+                if (uri == null && isFirstTimeLaunch) {
+                    val referrerUrl = fetchInstallReferrer()
+                    Logger.d(TAG, "bind: referrerUrl=$referrerUrl")
+                    matchLinkClick(referrerUrl)
+                    return@launch
+                }
+                handleOpeningURL(uri)
+            } catch (ex: Exception) {
+                withContext(Dispatchers.Main) {
+                    onLinkClickHandler.onLinkClick(null, null, ex)
+                    mLastListener?.onInitFinished(null, ex)
+                }
+            }
         }
     }
 
@@ -150,8 +173,15 @@ private class InternalPolarApp(
             mGetLinkJob?.cancel()
         }
         mGetLinkJob = CoroutineScope(Dispatchers.IO).launch {
-            mLastListener = listener
-            handleOpeningURL(uri)
+            try {
+                mLastListener = listener
+                handleOpeningURL(uri)
+            } catch (ex: Exception) {
+                withContext(Dispatchers.Main) {
+                    onLinkClickHandler.onLinkClick(null, null, ex)
+                    mLastListener?.onInitFinished(null, ex)
+                }
+            }
         }
     }
 
@@ -270,19 +300,93 @@ private class InternalPolarApp(
         }
     }
 
-    override fun matchLinkClick(url: String?) {
-        CoroutineScope(Dispatchers.IO).launch {
-            if (url.isNullOrEmpty()) return@launch
-            val params = url.split("&").associate {
-                val parts = it.split("=")
-                parts[0] to parts.getOrElse(1) { "" }
+    private suspend fun matchLinkClick(url: String?) {
+        if (url.isNullOrEmpty()) {
+            withContext(Dispatchers.Main) {
+                onLinkClickHandler.onLinkClick(null, null, null)
+                mLastListener?.onInitFinished(null, null)
             }
-            val utmSource = params["__utm_source"]
-            val subdomain = params["__subdomain"]
-            val slug = params["__slug"]
-            val clid = params["__clid"]
-            if (utmSource != "polar") return@launch
-            handleOpeningURL(url = url, subdomain = subdomain, slug = slug, clid = clid)
+            return
+        }
+        val params = url.split("&").associate {
+            val parts = it.split("=")
+            parts[0] to parts.getOrElse(1) { "" }
+        }
+        val utmSource = params["__utm_source"]
+        val subdomain = params["__subdomain"]
+        val slug = params["__slug"]
+        val clid = params["__clid"]
+        if (utmSource != "polar") {
+            withContext(Dispatchers.Main) {
+                onLinkClickHandler.onLinkClick(null, null, null)
+                mLastListener?.onInitFinished(null, null)
+            }
+            return
+        }
+        if (subdomain.isNullOrEmpty() && slug.isNullOrEmpty()) {
+            withContext(Dispatchers.Main) {
+                onLinkClickHandler.onLinkClick(null, null, null)
+                mLastListener?.onInitFinished(null, null)
+            }
+            return
+        }
+
+        val clickTime = DateTimeUtils.dateToString(
+            Date(),
+            PolarConstants.DateTime.BackendDateTimeMsFormat,
+            PolarConstants.DateTime.utcTimeZone,
+        )
+
+        try {
+            mLastLink = apiService.getLinkData(domain = subdomain, slug = slug)
+
+            val linkUrl = getHttpsUrl(mLastLink?.url)
+            if (!validateSupportingURL(linkUrl)) {
+                withContext(Dispatchers.Main) {
+                    onLinkClickHandler.onLinkClick(null, null, null)
+                    mLastListener?.onInitFinished(null, null)
+                }
+                return
+            }
+
+            val trackRequest = TrackLinkClickRequest(
+                domain = subdomain,
+                slug = slug,
+                trackType = TrackLinkClickRequest.TrackType.APP_CLICK,
+                clickTime = clickTime,
+                fingerprint = TrackLinkClickRequest.Fingerprint.ANDROID_SDK,
+                deviceData = mapOf(),
+                additionalData = mapOf(),
+            )
+
+            val clickUnid: String?
+            if (clid.isNullOrEmpty()) {
+                val linkClick = apiService.trackLinkClick(trackRequest)
+                clickUnid = linkClick?.unid
+                val request = UpdateLinkClickRequest(sdkUsed = true)
+                apiService.updateLinkClick(clickUnid, request)
+            } else {
+                val request = UpdateLinkClickRequest(sdkUsed = true)
+                clickUnid = clid
+                apiService.updateLinkClick(clickUnid, request)
+            }
+            trackEvent(
+                name = PolarConstants.InternalEvent.LINK_CLICK,
+                attributes = mapOf(
+                    "link" to url,
+                    "clickUnid" to clickUnid
+                )
+            )
+            withContext(Dispatchers.Main) {
+                onLinkClickHandler.onLinkClick(linkUrl, mLastLink?.data?.content, null)
+                mLastListener?.onInitFinished(mLastLink?.data?.content, null)
+            }
+        } catch (ex: Exception) {
+            val linkUrl = getHttpsUrl(mLastLink?.url)
+            withContext(Dispatchers.Main) {
+                onLinkClickHandler.onLinkClick(linkUrl, null, ex)
+                mLastListener?.onInitFinished(null, ex)
+            }
         }
     }
 
@@ -350,34 +454,29 @@ private class InternalPolarApp(
         }
     }
 
-    private suspend fun handleOpeningURL(
-        url: String?,
-        subdomain: String?,
-        slug: String?,
-        clid: String?
-    ) {
-        if (subdomain.isNullOrEmpty() && slug.isNullOrEmpty()) {
-            mLastListener?.onInitFinished(null, null)
-            return
-        }
-
-        val clickTime = DateTimeUtils.dateToString(
-            Date(),
-            PolarConstants.DateTime.BackendDateTimeMsFormat,
-            PolarConstants.DateTime.utcTimeZone,
-        )
-
+    private suspend fun handleOpeningURL(uri: Uri?) {
         try {
-            mLastLink = apiService.getLinkData(domain = subdomain, slug = slug)
-
-            val linkUrl = getHttpsUrl(mLastLink?.url)
-            if (!validateSupportingURL(linkUrl)) {
-                mLastListener?.onInitFinished(null, null)
+            val supportedBaseDomains = Configuration.Env.supportedBaseDomains
+            val domain = uri?.host
+            if (domain?.endsWith(supportedBaseDomains) != true) {
+//                withContext(Dispatchers.Main) {
+                    onLinkClickHandler.onLinkClick(null, null, null)
+                    mLastListener?.onInitFinished(null, null)
+//                }
                 return
             }
+            val subDomain = domain.replace(supportedBaseDomains, "")
+            val slug = uri.path?.replace("/", "") ?: ""
+
+            val clickTime = DateTimeUtils.dateToString(
+                Date(),
+                PolarConstants.DateTime.BackendDateTimeMsFormat,
+                PolarConstants.DateTime.utcTimeZone,
+            )
+            mLastLink = apiService.getLinkData(domain = subDomain, slug = slug)
 
             val trackRequest = TrackLinkClickRequest(
-                domain = subdomain,
+                domain = subDomain,
                 slug = slug,
                 trackType = TrackLinkClickRequest.TrackType.APP_CLICK,
                 clickTime = clickTime,
@@ -385,6 +484,7 @@ private class InternalPolarApp(
                 deviceData = mapOf(),
                 additionalData = mapOf(),
             )
+            val clid = uri.getQueryParameter("__clid")
 
             val clickUnid: String?
             if (clid.isNullOrEmpty()) {
@@ -395,111 +495,52 @@ private class InternalPolarApp(
             } else {
                 val request = UpdateLinkClickRequest(sdkUsed = true)
                 clickUnid = clid
-                apiService.updateLinkClick(clickUnid, request)
+                apiService.updateLinkClick(clid, request)
             }
             trackEvent(
                 name = PolarConstants.InternalEvent.LINK_CLICK,
                 attributes = mapOf(
-                    "link" to url,
+                    "link" to uri.path,
                     "clickUnid" to clickUnid
                 )
             )
-            onLinkClickHandler.onLinkClick(linkUrl, mLastLink?.data?.content, null)
-            mLastListener?.onInitFinished(mLastLink?.data?.content, null)
-        } catch (e: Exception) {
-            val linkUrl = getHttpsUrl(mLastLink?.url)
-            onLinkClickHandler.onLinkClick(linkUrl, null, e)
-            mLastListener?.onInitFinished(null, e)
-        }
-    }
-
-    private suspend fun handleOpeningURL(uri: Uri?) {
-        val supportedBaseDomains = Configuration.Env.supportedBaseDomains
-        val domain = uri?.host
-        if (domain?.endsWith(supportedBaseDomains) != true) {
-            mLastListener?.onInitFinished(null, null)
-            return
-        }
-        val subDomain = domain.replace(supportedBaseDomains, "")
-        val slug = uri.path?.replace("/", "") ?: ""
-        val context = application.applicationContext
-        val isFirstTimeLaunch = apiService.isFirstTimeLaunch(
-            context,
-            System.currentTimeMillis()
-        )
-        val clickTime = DateTimeUtils.dateToString(
-            Date(),
-            PolarConstants.DateTime.BackendDateTimeMsFormat,
-            PolarConstants.DateTime.utcTimeZone,
-        )
-        if (!uri.path.isNullOrEmpty()) {
-            try {
-                mLastLink = apiService.getLinkData(domain = subDomain, slug = slug)
-
-                val trackRequest = TrackLinkClickRequest(
-                    domain = subDomain,
-                    slug = slug,
-                    trackType = TrackLinkClickRequest.TrackType.APP_CLICK,
-                    clickTime = clickTime,
-                    fingerprint = TrackLinkClickRequest.Fingerprint.ANDROID_SDK,
-                    deviceData = mapOf(),
-                    additionalData = mapOf(),
-                )
-                val clid = uri.getQueryParameter("__clid")
-
-                val clickUnid: String?
-                if (clid.isNullOrEmpty()) {
-                    val linkClick = apiService.trackLinkClick(trackRequest)
-                    clickUnid = linkClick?.unid
-                    val request = UpdateLinkClickRequest(sdkUsed = true)
-                    apiService.updateLinkClick(clickUnid, request)
-                } else {
-                    val request = UpdateLinkClickRequest(sdkUsed = true)
-                    clickUnid = clid
-                    apiService.updateLinkClick(clid, request)
-                }
-                trackEvent(
-                    name = PolarConstants.InternalEvent.LINK_CLICK,
-                    attributes = mapOf(
-                        "link" to uri.path,
-                        "clickUnid" to clickUnid
-                    )
-                )
-
+            withContext(Dispatchers.Main) {
                 onLinkClickHandler.onLinkClick(uri.toString(), mLastLink?.data?.content, null)
                 mLastListener?.onInitFinished(mLastLink?.data?.content, null)
-            } catch (e: Exception) {
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
                 onLinkClickHandler.onLinkClick(uri.toString(), null, e)
                 mLastListener?.onInitFinished(null, e)
             }
-            return
         }
-        if (isFirstTimeLaunch && uri.path.isNullOrEmpty()) {
-            val windowMetrics = WindowMetricsCalculator
-                .getOrCreate()
-                .computeCurrentWindowMetrics(context)
-            val width = windowMetrics.bounds.width()
-            val height = windowMetrics.bounds.height()
+    }
 
-            // Get density using Resources
-            val metrics = context.resources?.displayMetrics
-            val density = metrics?.density
-            val densityDpi = metrics?.densityDpi
+    private suspend fun fetchInstallReferrer(): String? = withContext(Dispatchers.IO) {
+        suspendCancellableCoroutine { continuation ->
+            val referrerClient = InstallReferrerClient.newBuilder(application).build()
+            referrerClient.startConnection(object : InstallReferrerStateListener {
+                override fun onInstallReferrerSetupFinished(responseCode: Int) {
+                    val referrerUrl = when (responseCode) {
+                        InstallReferrerClient.InstallReferrerResponse.OK -> {
+                            try {
+                                referrerClient.installReferrer.installReferrer
+                            } catch (ex: Exception) {
+                                null
+                            }
+                        }
 
-            Logger.d(
-                TAG, "initSession: " +
-                        "\nIP4Address=${application.getIP4Address()}" +
-                        "\nIP6Address=${application.getIP6Address()}" +
-                        "\nosVersion=${application.getOsVersion()}" +
-                        "\nsdkVersion=${application.getSdkVersion()}" +
-                        "\ndeviceModel=${application.getDeviceModel()}" +
-                        "\nmanufacturer=${application.getManufacturer()}" +
-                        "\ndeviceName=${application.getDeviceName()}" +
-                        "\nwindow.width=${width}" +
-                        "\nwindow.height=${height}" +
-                        "\nwindow.density=${density}" +
-                        "\nwindow.densityDpi=${densityDpi}"
-            )
+                        else -> null
+                    }
+                    referrerClient.endConnection()
+                    continuation.resume(referrerUrl)
+                }
+
+                override fun onInstallReferrerServiceDisconnected() {
+                    continuation.resume(null)
+                }
+            })
+            continuation.invokeOnCancellation {}
         }
     }
 
@@ -531,7 +572,6 @@ open class PolarApp {
     open fun updateUser(userID: String?, attributes: Map<String, Any?>?) {}
     open fun setGCM(fcmToken: String?) {}
     open fun trackEvent(name: String, attributes: Map<String, Any?>) {}
-    open fun matchLinkClick(url: String?) {}
 
     companion object {
         const val TAG = ">>>Polar"

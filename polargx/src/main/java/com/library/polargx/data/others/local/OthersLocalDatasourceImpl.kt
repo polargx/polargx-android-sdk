@@ -12,7 +12,7 @@ class OthersLocalDatasourceImpl(
     override suspend fun isFirstTimeLaunch(context: Context?, nowInMillis: Long): Boolean {
         if (context == null) return false
         val firstTime =
-            sharedPreferences.getBoolean(PolarConstants.Local.Prefers.FIRST_TIME_KEY, true)
+            sharedPreferences.getBoolean(PolarConstants.Local.Prefers.FIRST_TIME_LAUNCH_KEY, true)
         if (!firstTime) return false // Already marked as not first time
 
         try {
@@ -34,13 +34,13 @@ class OthersLocalDatasourceImpl(
             // If it's a very recent install (adjust threshold), it's the first launch.
             if (timeDifferenceSeconds < 60) { // Adjust threshold as needed
                 sharedPreferences.edit()
-                    .putBoolean(PolarConstants.Local.Prefers.FIRST_TIME_KEY, false)
+                    .putBoolean(PolarConstants.Local.Prefers.FIRST_TIME_LAUNCH_KEY, false)
                     .apply() // Mark as not first time
                 return true
             } else {
                 //If the time difference is greater than the threshold, and the app was reinstalled, it is not the first time
                 sharedPreferences.edit()
-                    .putBoolean(PolarConstants.Local.Prefers.FIRST_TIME_KEY, false).apply()
+                    .putBoolean(PolarConstants.Local.Prefers.FIRST_TIME_LAUNCH_KEY, false).apply()
                 return false
             }
 
