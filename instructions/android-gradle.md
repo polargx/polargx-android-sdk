@@ -15,7 +15,7 @@ repositories {
 
 ```gradle
 dependencies {
-    implementation '"com.github.polargx:polargx-android-sdk:latest_version'
+    implementation "com.github.polargx:polargx-android-sdk:latest_version"
 }
 ```
 
