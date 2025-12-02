@@ -1,104 +1,33 @@
-## PolarGX Android SDK Installation Guide
-### 1. Create and setup Polar app
-- Register PolarGX account at https://app.polargx.com, after signup `unnamed app` has been created automatically.
-- Setting your app in _App Settings > App Information_.
-- Create an API Key in _App Settings > API Keys_ with _Mobile apps / frontend_ purpose.
-- Configure your domain in _Link Attribution > Configuration > Link domain section_ with:
-  + Default Link Domain
-  + Alternative Link Domain
-- Configure your Android Redirects in _Link Attribution > Configuration > Required Redirects section > Android Redirects_ with:
-  + Google Play Search or Custom URL: Help your link redirects to Google Play or your custom url if your app hasn't been installed.
-  + App Links: Help your link opens app immediately if your app was installed.
-    - Open Android Studio.
-    - Run the following command in the Terminal. The output will display the SHA256 fingerprint for both debug and release builds.
+# PolarGX Android SDK Installation Guide
 
-      For Mac:
-      ```
-      ./gradlew signingReport
-      
-      ```
-      For Windows:
-      ```
-      gradlew signingReport
-      
-      ```
-    - Use _SHA-256 fingerprint_ for _SHA256 Cert Fingerprints_.
-  + Scheme URI: Help your link opens app if your app was installed and can't be opened by _App Links_.
-    Ex: `yourapp_schemeurl://`
-  
-### 2. Adding PolarGX SDK
-- Open `build.gradle` (Module: app) and add the following line inside dependencies:
+A complete guide for integrating **PolarGX SDK** into your **Kotlin** or **Java** Android app.
 
-  ```
-  dependencies {
-      implementation "com.github.infinitech-dev:LinkAttribution-AndroidSDK:x.y.z"
-  }
-  ```
-  Replace x.y.z with the latest version.
-- Open `settings.gradle` (Project Settings) and add the following line inside repositories:
-  ```
-  repositories {
-        maven { url = uri("https://jitpack.io") }
-    }
-  ```
-- Click **Sync Now** in the top-right corner of Android Studio or go to **File → Sync Project with Gradle Files**.
-### 3. Configure AndroidManifest.xml
-- Open AndroidManifest.xml and add an `intent-filter` to the activity you want to open when a user clicks the App Link:
+### 1. Create Polar project:
+[TABS:Admin Portal:instructions/android-create-project.md]
 
-  ```
-  <activity
-      android:name=".MainActivity"
-      android:exported="true">
-      <intent-filter android:autoVerify="true">
-          <action android:name="android.intent.action.VIEW" />
-          <category android:name="android.intent.category.DEFAULT" />
-          <category android:name="android.intent.category.BROWSABLE" />
-  
-          <!-- Replace subdomain with your domain from PolarGX -->
-          <data android:scheme="https" />
-          <data android:host="{subdomain}.gxlnk.com" />
-          <data android:host="{subdomain}-alternate.gxlnk.com" />
-      </intent-filter>
-  </activity>
-  ```
-### 4. Use PolarGX SDK
-- Get _App Id_ and _API Key_ from https://app.polargx.com.
-- In MyApplication.kt:
+### 2. Configure Android Studio project
 
-  ```
-  override fun onCreate() {
-      super.onCreate()
-  
-      Polar.isLoggingEnabled = true
-      Polar.initialize(
-          application = this,
-          appId = YOUR_APP_ID,
-          apiKey = YOUR_API_KEY
-      )
-  }
-  ```
-- In MainActivity.kt:
+[TABS:Android Studio project: instructions/android-configure-project.md]
 
-   ```
-   private val polarInitListener = PolarInitListener { attributes, error ->
-       // Handle app link
-   }
+### 3. Add PolarGX SDK
 
-   override fun onStart() {
-       super.onStart()
-       Polar.bind(
-           activity = this,
-           uri = intent?.data,
-           listener = polarInitListener
-       )
-   }
+[TABS:Gradle: instructions/android-gradle.md]
 
-   override fun onNewIntent(intent: Intent) {
-       super.onNewIntent(intent)
-       Polar.reBind(
-           activity = this,
-           uri = intent.data,
-           listener = polarInitListener
-       )
-   }
-   ```
+### 4. Using PolarGX SDK
+
+[TABS:Using the SDK in Kotlin: instructions/android-kotlin.md,Using the SDK in Java: instructions/android-java.md]
+
+### 5. Push Notifications
+
+PolarGX SDK supports push notifications via **FCM** (Firebase Cloud Messaging). The SDK automatically registers and manages push tokens for your users.
+
+#### 5.1. Configure Push Service
+
+[TABS:FCM: instructions/android-push-fcm-configuration.md]
+
+**Note**: _You can create multiple push services for different environments (e.g., one for Production and one for Development). Each service should have a unique Service Name and appropriate configuration._
+
+#### 5.2. Configure PolarGX SDK for Push Notifications
+
+[TABS:FCM with Kotlin: instructions/android-push-fcm-kotlin.md,FCM with Java: instructions/android-push-fcm-java.md]
+
