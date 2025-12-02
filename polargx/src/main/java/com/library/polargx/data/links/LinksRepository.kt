@@ -9,6 +9,9 @@ interface LinksRepository {
     suspend fun onLoggedOut()
     suspend fun onTokenExpired()
 
+    suspend fun setFirstTimeLaunch(isFirstTimeLaunch: Boolean)
+    suspend fun isFirstTimeLaunch(): Boolean
+
     suspend fun getLinkData(domain: String?, slug: String?): HttpResponse
     suspend fun trackLinkClick(request: TrackLinkClickRequest?): HttpResponse
     suspend fun updateLinkClick(clickUnid: String?, request: UpdateLinkClickRequest?): HttpResponse

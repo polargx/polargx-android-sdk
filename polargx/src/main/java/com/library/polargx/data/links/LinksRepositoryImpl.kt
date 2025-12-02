@@ -31,6 +31,14 @@ class LinksRepositoryImpl(
         onUnauthenticated()
     }
 
+    override suspend fun setFirstTimeLaunch(isFirstTimeLaunch: Boolean) {
+        localDatasource.setFirstTimeLaunch(isFirstTimeLaunch)
+    }
+
+    override suspend fun isFirstTimeLaunch(): Boolean {
+       return localDatasource.isFirstTimeLaunch()
+    }
+
     override suspend fun getLinkData(
         domain: String?,
         slug: String?
