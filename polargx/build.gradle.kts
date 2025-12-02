@@ -91,6 +91,8 @@ dependencies {
     // Required for Ktor and serialization - Use api for serialization
     api(libs.kotlinx.serialization.json)
     api(libs.kotlinx.coroutines.android)
+
+    implementation(libs.installreferrer)
 }
 
 afterEvaluate {

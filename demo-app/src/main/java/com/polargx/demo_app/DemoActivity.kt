@@ -133,11 +133,6 @@ class DemoActivity : AppCompatActivity() {
             uri = uri,
             listener = mPolarInitListener
         )
-        if (uri == null) {
-            fetchInstallReferrer { url ->
-                PolarApp.shared.matchLinkClick(url)
-            }
-        }
     }
 
     override fun onNewIntent(intent: Intent, caller: ComponentCaller) {
@@ -147,41 +142,5 @@ class DemoActivity : AppCompatActivity() {
             uri = uri,
             listener = mPolarInitListener
         )
-        if (uri == null) {
-            fetchInstallReferrer { url ->
-                PolarApp.shared.matchLinkClick(url)
-            }
-        }
-    }
-
-    private fun fetchInstallReferrer(onResult: (String?) -> Unit) {
-        val referrerClient = InstallReferrerClient.newBuilder(this).build()
-
-        referrerClient.startConnection(object : InstallReferrerStateListener {
-            override fun onInstallReferrerSetupFinished(responseCode: Int) {
-                when (responseCode) {
-                    InstallReferrerClient.InstallReferrerResponse.OK -> {
-                        try {
-                            val response = referrerClient.installReferrer
-                            val referrerUrl = response.installReferrer
-                            onResult(referrerUrl)
-                        } catch (e: Exception) {
-                            onResult(null)
-                        } finally {
-                            referrerClient.endConnection()
-                        }
-                    }
-
-                    else -> {
-                        onResult(null)
-                        referrerClient.endConnection()
-                    }
-                }
-            }
-
-            override fun onInstallReferrerServiceDisconnected() {
-
-            }
-        })
     }
 }

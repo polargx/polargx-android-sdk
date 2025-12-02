@@ -101,7 +101,6 @@ val polarModule = module {
     single {
         ApiServiceImpl(
             client = get(named(PolarConstants.Koin.RATE_LIMIT_HTTP_CLIENT)),
-            sf = get(named(PolarConstants.Koin.SHARED_PREFS)),
         )
     } bind ApiService::class
 
