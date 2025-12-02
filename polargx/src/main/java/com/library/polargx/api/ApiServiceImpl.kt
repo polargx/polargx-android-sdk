@@ -1,9 +1,5 @@
 package com.library.polargx.api
 
-import android.content.Context
-import android.content.SharedPreferences
-import android.content.pm.PackageManager
-import com.library.polargx.PolarConstants
 import com.library.polargx.data.links.remote.link_click.LinkClickResponse
 import com.library.polargx.data.links.remote.link_data.LinkDataResponse
 import com.library.polargx.data.links.remote.track_link.TrackLinkClickRequest
@@ -22,11 +18,9 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
 import io.ktor.http.path
-import java.util.concurrent.TimeUnit
 
 class ApiServiceImpl(
     private val client: HttpClient,
-    private val sf: SharedPreferences
 ) : ApiService {
 
     override suspend fun getLinkData(domain: String?, slug: String?): LinkDataModel? {
@@ -75,41 +69,5 @@ class ApiServiceImpl(
             return body?.data?.linkClick
         }
         throw ApiError.ServerError.fromJson(response.bodyAsText())
-    }
-
-    override suspend fun isFirstTimeLaunch(context: Context?, nowInMillis: Long): Boolean {
-        if (context == null) return false
-        val firstTime = sf.getBoolean(PolarConstants.Local.Prefers.FIRST_TIME_KEY, true)
-        if (!firstTime) return false // Already marked as not first time
-
-        try {
-            val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            val installTimeMillis = packageInfo.firstInstallTime
-
-            // Check if install time is stored. If not, store it.
-            val storedInstallTime = sf.getLong(PolarConstants.Local.Prefers.INSTALL_TIME_KEY, 0L)
-            if (storedInstallTime == 0L) {
-                sf.edit().putLong(PolarConstants.Local.Prefers.INSTALL_TIME_KEY, installTimeMillis)
-                    .apply()
-            }
-
-            val timeDifferenceMillis = nowInMillis - installTimeMillis
-            val timeDifferenceSeconds = TimeUnit.MILLISECONDS.toSeconds(timeDifferenceMillis)
-
-            // If it's a very recent install (adjust threshold), it's the first launch.
-            if (timeDifferenceSeconds < 60) { // Adjust threshold as needed
-                sf.edit().putBoolean(PolarConstants.Local.Prefers.FIRST_TIME_KEY, false)
-                    .apply() // Mark as not first time
-                return true
-            } else {
-                //If the time difference is greater than the threshold, and the app was reinstalled, it is not the first time
-                sf.edit().putBoolean(PolarConstants.Local.Prefers.FIRST_TIME_KEY, false).apply()
-                return false
-            }
-
-        } catch (e: PackageManager.NameNotFoundException) {
-            e.printStackTrace()
-            return false // Handle error as not first time
-        }
     }
 }

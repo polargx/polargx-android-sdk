@@ -91,6 +91,8 @@ dependencies {
     // Required for Ktor and serialization - Use api for serialization
     api(libs.kotlinx.serialization.json)
     api(libs.kotlinx.coroutines.android)
+
+    implementation(libs.installreferrer)
 }
 
 afterEvaluate {
@@ -98,8 +100,8 @@ afterEvaluate {
         publications {
             register<MavenPublication>("release") {
                 groupId = "com.github.polargx" // Replace with your GitHub username
-                artifactId = "polargx-android-sdk-dev" // Replace with your library's name (e.g., my-awesome-library)
-                version = "3.1.7" // Initial version number (important!)
+                artifactId = "polargx-android-sdk" // Replace with your library's name (e.g., my-awesome-library)
+                version = "3.1.8" // Initial version number (important!)
 
                 afterEvaluate {
                     from(components["release"])

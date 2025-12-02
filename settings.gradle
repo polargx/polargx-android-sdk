@@ -20,6 +20,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "polargx-android-sdk-dev"
+rootProject.name = "polargx-android-sdk"
 include ':polargx'
 include ':demo-app'
